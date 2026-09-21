@@ -1,35 +1,12 @@
-LE 8 DE SAM — dossier du site
-=============================
+LE 8 DE SAM — version complète à jour
 
-Ce dossier est le site complet. Il se dépose tel quel.
+Ce dossier contient TOUT le jeu. Il remplace entièrement ce qui est sur le dépôt.
 
-CONTENU
-  index.html        le jeu
-  manifest.json     permet l'installation sur l'écran d'accueil
-  sw.js             fait fonctionner le jeu sans connexion
-  images/           décors, personnages et icônes
+  1. Extrais l'archive (clic droit > Extraire tout).
+  2. Ouvre le dossier "8-de-sam-complet".
+  3. Sélectionne tout son contenu (Ctrl+A).
+  4. Sur GitHub : Add file > Upload files, glisse la sélection à la souris.
+  5. Vérifie en bas : tu dois lire js/moteur.js, data/personnages.js, css/style.css.
+  6. Commit changes.
 
-MISE EN LIGNE — 2 possibilités
-
-  A) Netlify, par glisser-déposer (ordinateur)
-     1. app.netlify.com  ->  projet "8-de-sam"  ->  onglet Deploys
-     2. tout en bas, glisse le DOSSIER "site" entier dans la zone
-     3. attends 30 secondes, c'est en ligne
-
-  B) GitHub, puis publication automatique
-     1. sur ton dépôt : Add file > Upload files
-     2. glisse le CONTENU du dossier (index.html, manifest.json, sw.js, images)
-     3. en bas : Commit changes
-
-IMPORTANT
-  - ne renomme rien, surtout pas index.html
-  - garde la structure : images/ doit rester un dossier
-
-APRES UNE MISE A JOUR
-  Si le jeu semble ne pas changer, ferme complètement l'onglet et rouvre.
-  Le jeu se met en cache pour marcher hors connexion.
-
-INSTALLER LE JEU COMME UNE APPLICATION
-  Android : ouvre le site dans Chrome, menu ... > "Installer l'application"
-  iPhone  : ouvre dans Safari, bouton Partager > "Sur l'écran d'accueil"
-  Il s'ouvre alors en plein écran, sans barre de navigateur, et marche hors connexion.
+Les fichiers de même nom sont remplacés, les autres restent : c'est normal.
