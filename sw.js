@@ -1,10 +1,23 @@
 /* Le 8 de SAM — cache hors connexion.
    Change VERSION à chaque mise à jour pour forcer le rechargement. */
-const VERSION = 'sam8-v1';
+const VERSION = 'sam8-v4';
 const FICHIERS = [
   "./",
   "./index.html",
   "./manifest.json",
+  "./css/style.css",
+  "./data/decors.js",
+  "./data/personnages.js",
+  "./js/affichage.js",
+  "./js/config.js",
+  "./js/ecrans.js",
+  "./js/ia.js",
+  "./js/main.js",
+  "./js/moteur.js",
+  "./js/outils.js",
+  "./js/profils.js",
+  "./js/reseau.js",
+  "./js/son.js",
   "./images/hamza.webp",
   "./images/icone-192.png",
   "./images/icone-512.png",
