@@ -210,7 +210,7 @@ function viewFor(seat){
     over:G.over, deckN:G.deck.length, hist:G.hist, moveNo:G.moveNo, winner:G.winner,
     seq:G.seq, actNo:G.actNo, lastAct:G.lastAct, mid:G.mid
   }));
-  g.hands = g.hands.map((h, p) => p === seat ? h : h.map(() => ({ r:'?', s:'?' })));
+  if (!G.over) g.hands = g.hands.map((h, p) => p === seat ? h : h.map(() => ({ r:'?', s:'?' })));
   return g;
 }
 
