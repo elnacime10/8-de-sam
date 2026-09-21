@@ -438,9 +438,9 @@ function showEnd(){
   $('#endHand').innerHTML = rest.slice().sort(order).map(c => cardHTML(c)).join('');
   $('#againBtn').disabled = false; $('#againBtn').style.opacity = '1';
   $('#readyInfo').innerHTML = '';
-  if (MATCH.online) netEndScreen();          // en ligne : système de prêt / revanche
   $('#backBtn').textContent = MATCH.online ? 'Quitter la session' : 'Quitter';
   $('#endScreen').classList.remove('hidden');
+   if (MATCH.online) netEndScreen();          // en ligne : système de prêt / revanche
 }
 
 function nextStep(){
