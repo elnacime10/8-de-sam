@@ -188,7 +188,7 @@ function seatFor(c){
 function publicMatch(){
   return { n:MATCH.n, chars:MATCH.chars.slice(), levels:MATCH.levels.slice(), human:MATCH.human.slice(),
            names:MATCH.names.slice(), ready:MATCH.ready.slice(),
-           conn: seats().map(p => p === 0 || conns.some(c => c.seat === p)),
+           conn: seats().map(p => p === ME || conns.some(c => c.seat === p)),   /* l'hôte n'est pas forcément au siège 0 */
            world:MATCH.world, tours:MATCH.tours, chrono:MATCH.chrono, code:MATCH.code };
 }
 function sendHost(o){ if (hostConn && hostConn.open) try{ hostConn.send(o); }catch(e){} }
@@ -245,6 +245,7 @@ function onPeerGone(c){
     MATCH.ready[p] = false;
     renderLobby();
     broadcastLobby();
+    if (PHASE){ phaseLastRest = -2; checkPhase(); broadcastState(); if (PHASE) netEndScreen(); }
   }
 }
 
@@ -531,7 +532,7 @@ function armChrono(){
    de la fin : s'il refuse la revanche, la session se ferme.
    ============================================================ */
 let PHASE = null, GPHASE = null, phaseT = null, phaseLastRest = -1, countedMid = null;
-const PHASE_MS = 60000;
+const TOUR_MS = 6000;      // pause entre deux tours, le temps de voir le classement
 
 function monJeton(){
   try {
@@ -552,7 +553,8 @@ function phaseKind(){
   return (MATCH.tour < MATCH.tours || egalite) ? 'tour' : 'revanche';
 }
 function startPhase(kind){
-  PHASE = { kind, ready:{}, fin:Date.now() + PHASE_MS };
+  /* entre deux tours : on enchaîne tout seul. Revanche : pas de minuteur, on attend les réponses. */
+  PHASE = { kind, ready:{}, fin: kind === 'tour' ? Date.now() + TOUR_MS : Infinity };
   phaseLastRest = -1;
   clearInterval(phaseT); phaseT = setInterval(checkPhase, 500);
   checkPhase();
@@ -560,12 +562,21 @@ function startPhase(kind){
 function humainsPresents(){
   return seats().filter(p => MATCH.human[p] && !MATCH.dq[p] && (p === ME || conns.some(c => c.seat === p)));
 }
+function ordisRestants(){ return seats().filter(p => !MATCH.human[p] && !MATCH.dq[p]).length; }
 function checkPhase(){
   if (!PHASE) return;
-  const presents = humainsPresents();
-  const tous = presents.length > 0 && presents.every(p => PHASE.ready[p]);
-  if (tous || Date.now() >= PHASE.fin){ finishPhase(); return; }
-  const rest = Math.max(0, Math.ceil((PHASE.fin - Date.now()) / 1000));
+  if (PHASE.kind === 'tour'){
+    if (Date.now() >= PHASE.fin){ finishPhase(); return; }
+  } else {
+    const presents = humainsPresents();
+    /* revanche : il faut au moins deux joueurs, ordinateurs compris */
+    if (presents.length + ordisRestants() < 2){
+      PHASE = null; clearInterval(phaseT); phaseT = null;
+      return versAccueil("La revanche n'est plus possible : l'autre joueur est parti.");
+    }
+    if (presents.every(p => PHASE.ready[p])){ finishPhase(); return; }
+  }
+  const rest = PHASE.fin === Infinity ? 0 : Math.max(0, Math.ceil((PHASE.fin - Date.now()) / 1000));
   if (rest !== phaseLastRest){
     phaseLastRest = rest;
     broadcastState();
@@ -607,15 +618,7 @@ function finishPhase(){
   const humains = seats().filter(p => MATCH.human[p] && !MATCH.dq[p]);
   const absents = humains.filter(p => !ph.ready[p]);
   $('#endScreen').classList.add('hidden');
-  if (ph.kind === 'tour'){
-    absents.forEach(p => {
-      MATCH.dq[p] = true;                               /* classé dernier jusqu'à la fin du match */
-      if (p !== ME) dropSeat(p, "Disqualifié : tu n'étais pas prêt pour le tour suivant.");
-    });
-    if (activeN() < 2) return versAccueil('Plus assez de joueurs pour continuer.');
-    nextStep();
-    return;
-  }
+  if (ph.kind === 'tour'){ nextStep(); return; }
   if (!ph.ready[ME]) return versAccueil('Session fermée : pas de revanche.');
   absents.forEach(p => dropSeat(p, 'La revanche se joue sans toi.'));
   compactSeats(p => !MATCH.dq[p] && (!MATCH.human[p] || !absents.includes(p)));
@@ -634,26 +637,35 @@ function netEndScreen(){
     btn.disabled = true; btn.style.opacity = '.35';
     btn.textContent = "En attente de l'hôte…"; info.innerHTML = ''; return;
   }
+  if (ph.k === 'tour'){
+    /* le match continue : rien à décider */
+    btn.disabled = true; btn.style.opacity = '.5';
+    btn.textContent = 'Tour suivant dans ' + ph.rest + ' s';
+    info.innerHTML = '';
+    return;
+  }
   const moi = !!ph.ready[ME];
   btn.disabled = false; btn.style.opacity = '1';
-  btn.textContent = ph.k === 'tour'
-    ? (moi ? 'Prêt ✓ (toucher pour annuler)' : 'Prêt pour le tour suivant')
-    : (moi ? 'Revanche acceptée ✓' : 'Revanche !');
-  const hs = seats().filter(p => MATCH.human[p] && !MATCH.dq[p]);
+  /* seuls ceux qui sont encore là comptent : si quelqu'un part, on l'attend plus */
+  const hs = seats().filter(p => MATCH.human[p] && !MATCH.dq[p]
+                               && (p === ME || (MATCH.host ? conns.some(c => c.seat === p) : MATCH.conn[p] !== false)));
   const n = hs.filter(p => ph.ready[p]).length;
-  info.innerHTML = '<b>' + n + '/' + hs.length + '</b> ' + (ph.k === 'tour' ? 'prêts' : 'partants')
-    + ' · <b>' + ph.rest + ' s</b><br>'
+  const attendus = hs.filter(p => !ph.ready[p] && p !== ME);
+  btn.textContent = moi
+    ? (attendus.length ? 'Revanche acceptée ✓ — en attente' : 'Revanche acceptée ✓')
+    : 'Revanche !';
+  info.innerHTML = '<b>' + n + '/' + hs.length + '</b> partants<br>'
     + hs.map(p => (ph.ready[p] ? '✓ ' : '… ') + (p === ME ? 'Toi' : nameOf(p))).join('  ·  ');
 }
 function netReadyClick(){
   if (MATCH.host){
-    if (!PHASE) return;
+    if (!PHASE || PHASE.kind === 'tour') return;
     PHASE.ready[ME] = !PHASE.ready[ME];
     phaseLastRest = -1; checkPhase();
     if (PHASE) netEndScreen();
     return;
   }
-  if (!GPHASE) return;
+  if (!GPHASE || GPHASE.k === 'tour') return;
   const v = !GPHASE.ready[ME];
   GPHASE.ready[ME] = v;
   sendHost({ t:'NEXT', v });
