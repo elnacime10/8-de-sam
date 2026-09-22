@@ -208,6 +208,17 @@
 </div>
 
 <!-- MENU -->
+<div class="overlay hidden" id="diagScreen">
+  <div class="panel">
+    <h2 class="endTitle">Rapport</h2>
+    <p class="sub">Copie ce texte et colle-le dans la conversation.</p>
+    <textarea id="diagTxt" readonly style="width:100%;height:230px;border-radius:12px;padding:10px;font-size:11px;
+      background:rgba(10,8,14,.8);color:var(--text);border:1px solid rgba(255,255,255,.2)"></textarea>
+    <button class="btn" id="diagCopy">Copier</button>
+    <button class="btn ghost" id="diagClose">Fermer</button>
+  </div>
+</div>
+
 <div class="overlay hidden" id="menuScreen">
   <div class="panel">
     <h2 class="endTitle">Pause</h2>
@@ -219,6 +230,7 @@
       <button class="iconBtn" id="menuSet"><b>⚙</b>Réglages</button>
       <button class="iconBtn" id="fsBtn"><b>⛶</b>Plein écran</button>
       <button class="iconBtn" id="restartBtn"><b>↻</b>Recommencer</button>
+      <button class="iconBtn" id="diagBtn"><b>⚑</b>Rapport</button>
     </div>
     <button class="btn ghost" id="quitBtn">Quitter la partie</button>
   </div>

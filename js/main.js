@@ -111,7 +111,7 @@ refreshSet();
 refreshSetup();
 
 /* ---- Numéro de version : sur l'accueil et dans la pause ---- */
-const VERSION_JEU = '1.8';
+const VERSION_JEU = '1.9';
 $('#versionHome').textContent = 'Version ' + VERSION_JEU;
 $('#versionMenu').textContent = 'Version ' + VERSION_JEU;
 
@@ -134,3 +134,73 @@ if ('serviceWorker' in navigator){
     else netBar('Nouvelle version prête : elle s\'installera à la prochaine ouverture du jeu.', true);
   });
 }
+
+
+/* ============================================================
+   BOÎTE NOIRE ET SÉCURITÉ (diagnostic)
+   - garde en mémoire les derniers coups et les erreurs
+   - si le tour d'un adversaire ne démarre pas, le relance
+   ============================================================ */
+const JOURNAL = [];
+let relances = 0;
+function note(quoi, extra){
+  JOURNAL.push(Object.assign({ s: Math.round(performance.now() / 100) / 10, quoi }, extra || {}));
+  if (JOURNAL.length > 140) JOURNAL.shift();
+}
+window.addEventListener('error', e => note('ERREUR', {
+  msg: String(e.message || ''), ou: String(e.filename || '').split('/').pop() + ':' + e.lineno }));
+window.addEventListener('unhandledrejection', e => note('ERREUR PROMESSE', {
+  msg: String((e.reason && e.reason.message) || e.reason || '') }));
+
+let dernierActe = -1, immobile = 0;
+setInterval(() => {
+  try {
+    if (!G || G.over) return;
+    if (G.actNo !== dernierActe){
+      dernierActe = G.actNo; immobile = 0;
+      note('coup', { n:G.actNo, qui:G.lastAct ? G.lastAct.p : -1, quoi:G.lastAct ? G.lastAct.k : '',
+                     tour:G.turn, busy, mains:G.hands.map(h => h.length).join('/') });
+      return;
+    }
+    immobile++;
+    const attenteIA = G.turn !== ME && isAI(G.turn) && G.in[G.turn] && (!MATCH.online || MATCH.host);
+    if (attenteIA && immobile >= 5){
+      note('BLOCAGE', { tour:G.turn, busy, skipAll, humains:MATCH.human.slice(0, MATCH.n).join(','),
+        enJeu:G.in.slice(0, MATCH.n).join(','), mains:G.hands.map(h => h.length).join('/'),
+        pioche:G.deck.length, defausse:G.discard.length,
+        attaque:G.pending ? (G.pending.type + '+' + G.pending.amount + '→' + G.pending.target) : '—',
+        top:G.top ? (G.top.r + G.top.s) : '—', couleur:G.activeSuit, actNo:G.actNo });
+      immobile = 0; relances++;
+      busy = false;                       /* on lève le verrou s'il était resté fermé */
+      flash('Adversaire relancé', true);
+      runAI();
+    }
+  } catch(e){ note('ERREUR VEILLE', { msg:String(e && e.message) }); }
+}, 1000);
+
+function rapport(){
+  return JSON.stringify({
+    version: VERSION_JEU, quand: new Date().toISOString(), relances,
+    ecran: (window.innerWidth || 0) + 'x' + (window.innerHeight || 0),
+    match: G ? { n:MATCH.n, enLigne:MATCH.online, hote:MATCH.host, moi:ME, tour:MATCH.tour + '/' + MATCH.tours,
+                 humains:MATCH.human.slice(0, MATCH.n), niveaux:MATCH.levels.slice(0, MATCH.n),
+                 vitesse:SET.speed } : null,
+    etat: G ? { tour:G.turn, finie:G.over, busy, skipAll, enJeu:G.in.slice(0, MATCH.n),
+                mains:G.hands.map(h => h.length), pioche:G.deck.length, defausse:G.discard.length,
+                attaque:G.pending, top:G.top, couleur:G.activeSuit, actNo:G.actNo, sortis:G.out } : null,
+    journal: JOURNAL.slice(-70)
+  }, null, 1);
+}
+$('#diagBtn').addEventListener('click', async () => {
+  const txt = rapport();
+  $('#diagTxt').value = txt;
+  let copie = false;
+  try { await navigator.clipboard.writeText(txt); copie = true; } catch(e){}
+  if (copie){ flash('Rapport copié — colle-le dans la conversation', true); }
+  else { $('#menuScreen').classList.add('hidden'); $('#diagScreen').classList.remove('hidden'); }
+});
+$('#diagCopy').addEventListener('click', () => {
+  const t = $('#diagTxt'); t.focus(); t.select();
+  try { document.execCommand('copy'); flash('Rapport copié', true); } catch(e){}
+});
+$('#diagClose').addEventListener('click', () => { $('#diagScreen').classList.add('hidden'); });
