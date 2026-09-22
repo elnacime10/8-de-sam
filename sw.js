@@ -2,7 +2,7 @@
    Règle : on va TOUJOURS chercher la version en ligne d'abord. La mémoire ne sert
    que si le réseau ne répond pas. Les mises à jour arrivent donc toutes seules.
    Change VERSION à chaque livraison. */
-const VERSION = 'sam8-1.6';
+const VERSION = 'sam8-1.7';
 const FICHIERS = [
   "./",
   "./index.html",
@@ -20,6 +20,7 @@ const FICHIERS = [
   "./js/profils.js",
   "./js/reseau.js",
   "./js/son.js",
+  "./images/dos-carte.webp",
   "./images/hamza.webp",
   "./images/icone-192.png",
   "./images/icone-512.png",

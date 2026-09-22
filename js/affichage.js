@@ -332,20 +332,27 @@ function renderAct(){
 }
 
 /* ---- La couleur demandée par un 8 recouvre la carte, et teinte la table ---- */
+/* symboles dessinés (pleins, nets, sans rien qui transparaisse) */
+const SUIT_SVG = {
+  H:'M50 88C20 66 6 50 6 32 6 18 17 8 30 8c9 0 16 5 20 12 4-7 11-12 20-12 13 0 24 10 24 24 0 18-14 34-44 56Z',
+  D:'M50 6 86 50 50 94 14 50Z',
+  S:'M50 6C30 30 8 42 8 60c0 14 12 22 24 22 8 0 13-4 16-8-2 10-6 16-12 20h28c-6-4-10-10-12-20 3 4 8 8 16 8 12 0 24-8 24-22C92 42 70 30 50 6Z',
+  C:'M50 8a17 17 0 1 1 0 34 17 17 0 1 1 0-34ZM28 36a17 17 0 1 1 0 34 17 17 0 1 1 0-34ZM72 36a17 17 0 1 1 0 34 17 17 0 1 1 0-34ZM46 52h8l6 42H40Z'
+};
 function renderSuitBig(){
-  const el = $('#suitBig');
+  const el = $('#suitBig'), ds = $('#discardSlot'), tab = $('#table');
   const demande = G && G.top && G.top.r === '8' && G.activeSuit;
-  const tab = $('#table');
-  if (!demande){ el.classList.add('hidden'); tab.style.setProperty('--tint', 'transparent'); return; }
+  ds.classList.toggle('masque', !!demande);
+  if (!demande){ el.classList.add('hidden'); el.dataset.s = ''; tab.style.setProperty('--tint', 'transparent'); return; }
   const col = SUIT_COL[G.activeSuit];
-  if (el.textContent !== SUIT_CHAR[G.activeSuit] || el.classList.contains('hidden')){
-    el.textContent = SUIT_CHAR[G.activeSuit];
+  if (el.dataset.s !== G.activeSuit || el.classList.contains('hidden')){
+    el.dataset.s = G.activeSuit;
+    el.innerHTML = '<svg viewBox="0 0 100 100" width="58%" height="58%" aria-hidden="true"><path fill="#fff" d="' + SUIT_SVG[G.activeSuit] + '"/></svg>';
     el.style.background = col;
     el.classList.remove('hidden');
   }
   tab.style.setProperty('--tint', col + '40');
 }
-
 
 /* ---- La table prend la hauteur qui reste : rien ne déborde, rien ne défile ----
    On rapetisse la pioche et la défausse jusqu'à ce que tout tienne. En dernier

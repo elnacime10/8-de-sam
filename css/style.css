@@ -545,3 +545,20 @@ table.rt td.s{ width:38px; }
 
 #table{ justify-content:safe center; }
 #oppRow{ flex:0 0 auto; }      /* la rangée des adversaires ne se tasse jamais */
+
+
+/* ===== Étape 3 — la table : pioche visible à côté de la défausse ===== */
+#piles{ align-items:center; gap:22px; }
+#piles .pileWrap:first-child{ position:static; opacity:1; pointer-events:auto; transform:none; }
+#drawSlot{ width:calc(var(--pile-w) * .66); height:calc(var(--pile-h) * .66); box-shadow:none; }
+#drawSlot .backcard, .cardback{ background:url(../images/dos-carte.webp) center / cover no-repeat;
+  border:none; border-radius:7px; font-size:0; color:transparent; }
+#drawSlot .backcard{ box-shadow:3px 3px 0 -1px #0b0910, 3px 3px 0 0 rgba(212,170,90,.55),
+  6px 6px 0 -1px #0b0910, 6px 6px 0 0 rgba(212,170,90,.45), 0 10px 18px rgba(0,0,0,.5); }
+#drawCount{ right:-12px; bottom:-12px; min-width:32px; height:28px; border-radius:999px; padding:0 8px;
+  background:var(--gold); color:#2B1B05; font-family:'Anton',sans-serif; font-size:16px; border:2px solid #14101C; }
+#piles .pileLabel{ background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); border-radius:8px; padding:3px 9px; font-size:12px; font-weight:700; color:var(--text); }
+#suitTag, #deckInfo{ display:none !important; }
+/* le symbole de la couleur demandée recouvre la carte, sans transparence */
+#suitBig{ font-size:0; }
+#discardSlot.masque > .card:last-child .pip{ visibility:hidden; }
