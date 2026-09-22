@@ -2,6 +2,7 @@
    Réglages : tailles d'écran, vitesses, préférences mémorisées. */
 
 let CW = 62, CH = 88, COL = 620;
+let PW0 = 90;              /* taille idéale de la défausse, avant ajustement */
 function sizeUp(){
   const vw = window.innerWidth || 400, vh = window.innerHeight || 800;
   /* la colonne suit la hauteur : sur un grand écran tout grandit ensemble */
@@ -9,7 +10,7 @@ function sizeUp(){
   /* la carte est bornée par la largeur ET par la hauteur, sinon ça déborde */
   CW = Math.round(Math.max(50, Math.min(94, Math.min(COL * 0.165, vh * 0.102))));
   CH = Math.round(CW * 1.42);
-  const pw = Math.round(Math.max(72, Math.min(150, Math.min(COL * 0.30, vh * 0.17))));
+  const pw = PW0 = Math.round(Math.max(72, Math.min(150, Math.min(COL * 0.30, vh * 0.17))));
   const faceH = Math.round(Math.max(58, Math.min(160, vh * (vh < 640 ? 0.118 : 0.145))));
   const gap = vh < 640 ? 5 : 9;
   const r = document.documentElement.style;

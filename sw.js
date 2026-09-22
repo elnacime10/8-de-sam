@@ -2,7 +2,7 @@
    Règle : on va TOUJOURS chercher la version en ligne d'abord. La mémoire ne sert
    que si le réseau ne répond pas. Les mises à jour arrivent donc toutes seules.
    Change VERSION à chaque livraison. */
-const VERSION = 'sam8-1.5';
+const VERSION = 'sam8-1.6';
 const FICHIERS = [
   "./",
   "./index.html",

@@ -147,25 +147,28 @@ function oppOrder(){
 function renderOpps(){
   const row = $('#oppRow');
   const n = MATCH.n - 1;
-  row.className = n >= 2 ? 'two' : '';
+  row.className = n >= 2 ? 'two' : 'solo';
   row.dataset.n = n;
   row.innerHTML = '';
-  const ordre = oppOrder();
-  ordre.forEach((p, idx) => {
+  oppOrder().forEach(p => {
     const aim = G.pending && G.pending.target === p;
-    const droite = idx >= Math.ceil(ordre.length / 2);
     const mine = G.turn === p && !G.over;
+    const derniere = G.in[p] && G.hands[p].length === 1 && !G.over;   /* le moment où tout se joue */
     const seat = document.createElement('div');
-    seat.className = 'seat' + (droite ? ' right' : '') + (G.in[p] ? '' : ' out')
-                   + (aim ? ' aim' : (mine ? ' turn' : ' dim'));
+    seat.className = 'seat' + (G.in[p] ? '' : ' out') + (aim ? ' aim' : (mine ? ' turn' : ' dim')) + (derniere ? ' last' : '');
     seat.dataset.p = p;
+    const tag = aim ? `<span class="tagS aimT">▼ +${G.pending.amount}</span>`
+              : derniere ? '<span class="tagS lastT">DERNIÈRE CARTE</span>'
+              : mine ? '<span class="tagS turnT">IL JOUE</span>' : '';
+    const nb = G.hands[p].length;
+    const niveau = MATCH.human[p] ? 'joueur' : MATCH.levels[p];
+    const score = MATCH.n > 2 ? ' · <b>' + (MATCH.scores[p] > 0 ? '+' : '') + MATCH.scores[p] + '</b>' : '';
     seat.innerHTML = `
-      ${aim ? `<span class="aimTag">▼ ${G.pending.amount}</span>` : ''}
-      <img class="face" src="${faceOf(p)}" alt="">
       <div class="opp${mine ? ' turn' : ''}${aim ? ' aim' : ''}">
-        <div class="who"><div class="nm">${nameOf(p)}</div>
-        <div class="mt">${MATCH.human[p] ? 'joueur' : MATCH.levels[p]}${MATCH.n > 2 ? ' · <b>' + (MATCH.scores[p] > 0 ? '+' : '') + MATCH.scores[p] + '</b>' : ''}</div></div>
-        <span class="cnt">${G.hands[p].length}</span>
+        ${tag}
+        <img class="face" src="${faceOf(p)}" alt="">
+        <div class="who"><div class="nm">${nameOf(p)}</div><div class="mt">${niveau}${score}</div></div>
+        <div class="cntBox"><span class="cnt">${G.in[p] ? nb : '✓'}</span><span class="cntL">${G.in[p] ? (nb > 1 ? 'cartes' : 'carte') : 'sorti'}</span></div>
       </div>`;
     row.appendChild(seat);
   });
@@ -286,6 +289,7 @@ function render(){
   $('#skipBtn').classList.toggle('hidden', !showSkip);
   $('#handZone').style.opacity = G.in[ME] ? '1' : '.45';
   setTurnLine();
+  ajusteTable();
 }
 
 function setTurnLine(){
@@ -340,4 +344,42 @@ function renderSuitBig(){
     el.classList.remove('hidden');
   }
   tab.style.setProperty('--tint', col + '40');
+}
+
+
+/* ---- La table prend la hauteur qui reste : rien ne déborde, rien ne défile ----
+   On rapetisse la pioche et la défausse jusqu'à ce que tout tienne. En dernier
+   recours on masque l'historique, puis le sens de rotation. */
+function ajusteTable(){
+  try { ajusteTableSur(); } catch(e){ /* une mesure ratée ne doit jamais empêcher la partie de s'afficher */ }
+}
+function ajusteTableSur(){
+  const t = $('#table'); if (!t || !t.children || typeof getComputedStyle !== 'function') return;
+  const r = document.documentElement.style;
+  const besoin = () => {
+    let h = 0, n = 0;
+    for (const e of Array.from(t.children)){
+      const cs = getComputedStyle(e);
+      if (cs.display === 'none' || cs.position === 'absolute') continue;
+      h += e.offsetHeight + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0); n++;
+    }
+    return h + Math.max(0, n - 1) * (parseFloat(getComputedStyle(t).rowGap) || 0);
+  };
+  const pose = w => { r.setProperty('--pile-w', w + 'px'); r.setProperty('--pile-h', Math.round(w * 1.4) + 'px'); };
+  $('#histCol').style.display = '';
+  $('#hand').style.transform = '';
+  let pw = PW0; pose(pw);
+  const place = t.clientHeight;
+  let garde = 0;
+  while (besoin() > place && pw > 48 && garde++ < 20){ pw -= 6; pose(pw); }
+  if (besoin() > place) $('#dirWrap').style.display = 'none';
+  if (besoin() > place) $('#histCol').style.display = 'none';
+  /* tout petit écran : la main se réduit un peu plutôt que de chevaucher la table */
+  const hand = $('#hand'), manque = besoin() - t.clientHeight;
+  if (manque > 0){
+    const h = hand.offsetHeight, k = Math.max(0.72, (h - manque) / h);
+    hand.style.transformOrigin = '50% 100%';
+    hand.style.transform = 'scale(' + k.toFixed(3) + ')';
+    hand.style.height = Math.round(h * k) + 'px';
+  }
 }

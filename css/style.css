@@ -502,3 +502,46 @@ table.rt td.s{ width:38px; }
 #histCol .chip.f2{ opacity:.78; } #histCol .chip.f3{ opacity:.66; }
 #handCount, #deckInfo{ background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:5px 9px; color:var(--text); }
 #sortBtn{ background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); color:var(--text); }
+
+
+/* ===== Étape 2 — adversaires en vignettes compactes ===== */
+#oppRow{ align-items:stretch; gap:6px; padding:12px 0 4px; }
+#oppRow .seat{ flex:1 1 0; min-width:0; }
+#oppRow .seat .opp{ margin-top:0; position:relative; width:100%; box-sizing:border-box;
+  background:rgba(12,10,16,.84); border:1.5px solid rgba(255,255,255,.14); border-radius:14px; }
+#oppRow .seat .face{ border-radius:50%; object-fit:cover; object-position:top center; background:#2A2336;
+  border:2px solid rgba(255,255,255,.22); max-width:none; transform:none; filter:none; opacity:1; flex:0 0 auto; }
+#oppRow .seat .aimTag{ display:none; }
+/* face à face : une bande horizontale */
+#oppRow.solo .seat .opp{ flex-direction:row; align-items:center; padding:8px 14px 8px 8px; gap:12px; }
+#oppRow.solo .seat .face{ width:62px; height:62px; }
+#oppRow.solo .seat .who{ flex:1 1 auto; }
+#oppRow.solo .seat .nm{ font-size:22px; }
+#oppRow.solo .seat .mt{ font-size:12px; }
+#oppRow.solo .seat .cnt{ font-size:30px; }
+/* à plusieurs : des vignettes côte à côte */
+#oppRow.two .seat .opp{ flex-direction:column; align-items:center; padding:13px 4px 7px; gap:3px; text-align:center; }
+#oppRow.two .seat .face{ width:52px; height:52px; }
+#oppRow[data-n="4"] .seat .face{ width:44px; height:44px; }
+#oppRow.two .seat .who{ display:flex; flex-direction:column; align-items:center; max-width:100%; }
+#oppRow.two .seat .nm{ font-size:14px; max-width:100%; }
+#oppRow.two .seat .mt{ font-size:10px; margin-top:1px; }
+#oppRow.two .seat .cnt{ font-size:21px; }
+.cntBox{ display:flex; flex-direction:column; align-items:center; line-height:1; }
+.cntBox .cnt{ font-family:'Anton',sans-serif; color:var(--gold); line-height:1; }
+.cntL{ font-size:10.5px; color:var(--muted); font-weight:700; margin-top:2px; }
+#oppRow .seat.out .opp{ opacity:.5; }
+#oppRow .seat.turn .opp{ border:2px solid var(--gold); }
+#oppRow .seat.aim .opp{ border:2px solid #E4693A; }
+#oppRow .seat.last .opp{ border:2px solid #E4574B; animation:lastPulse 1s infinite; }
+#oppRow .seat.last .cnt{ color:#FF8A7C; }
+@keyframes lastPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(228,87,75,.6); } 50%{ box-shadow:0 0 0 7px rgba(228,87,75,0); } }
+.tagS{ position:absolute; top:-10px; left:50%; transform:translateX(-50%); z-index:3; white-space:nowrap;
+  padding:3px 8px; border-radius:999px; font-size:9.5px; font-weight:800; letter-spacing:.3px; line-height:1.2; }
+.turnT{ background:var(--gold); color:#2B1B05; }
+.lastT{ background:#D23A2C; color:#fff; animation:lastBlink 1s infinite; }
+.aimT{ background:#E4693A; color:#fff; }
+@keyframes lastBlink{ 50%{ opacity:.5; } }
+
+#table{ justify-content:safe center; }
+#oppRow{ flex:0 0 auto; }      /* la rangée des adversaires ne se tasse jamais */
