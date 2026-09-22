@@ -562,3 +562,10 @@ table.rt td.s{ width:38px; }
 /* le symbole de la couleur demandée recouvre la carte, sans transparence */
 #suitBig{ font-size:0; }
 #discardSlot.masque > .card:last-child .pip{ visibility:hidden; }
+
+
+/* ===== Étape 4 — ta main : un seul signal, piocher plus discret, sans signes ===== */
+#drawBtn{ background:rgba(12,10,16,.84); color:var(--gold); border:1.5px solid var(--gold); box-shadow:none; }
+#drawBtn.prime{ background:linear-gradient(180deg,var(--gold),var(--gold-dk)); color:#2B1B05; border:none;
+  box-shadow:0 4px 0 rgba(0,0,0,.35); }
+.card .sign{ display:none !important; }

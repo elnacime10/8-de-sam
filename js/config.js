@@ -8,7 +8,7 @@ function sizeUp(){
   /* la colonne suit la hauteur : sur un grand écran tout grandit ensemble */
   COL = Math.max(300, Math.min(vw, Math.min(760, Math.round(vh * 0.62))));
   /* la carte est bornée par la largeur ET par la hauteur, sinon ça déborde */
-  CW = Math.round(Math.max(50, Math.min(94, Math.min(COL * 0.165, vh * 0.102))));
+  CW = Math.round(Math.max(50, Math.min(110, Math.min(COL * 0.215, vh * 0.106))));
   CH = Math.round(CW * 1.42);
   const pw = PW0 = Math.round(Math.max(70, Math.min(132, Math.min(COL * 0.27, vh * 0.155))));
   const faceH = Math.round(Math.max(58, Math.min(160, vh * (vh < 640 ? 0.118 : 0.145))));

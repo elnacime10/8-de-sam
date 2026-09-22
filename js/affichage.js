@@ -241,7 +241,7 @@ function render(){
   hand.innerHTML = '';
   $('#handCount').textContent = cards.length + (cards.length > 1 ? ' cartes' : ' carte');
   const cw = CW, avail = Math.max(120, hand.clientWidth - 8);
-  const nRows = cards.length > 18 ? 3 : (cards.length > 9 ? 2 : 1);
+  const nRows = cards.length > 24 ? 3 : (cards.length > 11 ? 2 : 1);   /* deux étages suffisent jusqu'à 24 cartes */
   const lift = Math.round(CH * 0.5);
   hand.style.height = (CH + 24 + (nRows - 1) * lift) + 'px';
   const per = Math.ceil(cards.length / nRows), rows = [];
@@ -284,6 +284,7 @@ function render(){
   } else {
     btn.textContent = myTurn && hasPlayable(ME) ? 'Piocher quand même' : 'Piocher';
     btn.classList.remove('danger');
+    btn.classList.toggle('prime', myTurn && !hasPlayable(ME));   /* doré seulement quand il faut piocher */
   }
   const showSkip = !G.in[ME] && !G.over;
   $('#skipBtn').classList.toggle('hidden', !showSkip);
@@ -300,7 +301,7 @@ function setTurnLine(){
     el.className = 'you';
     if (G.pending) el.textContent = 'Contre avec un ' + (G.pending.type === 'A' ? 'as' : '9') + ' ou encaisse ' + G.pending.amount;
     else if (G.freeStart) el.textContent = 'Tu ouvres : pose la carte que tu veux';
-    else el.textContent = hasPlayable(ME) ? 'À toi' : 'Rien à poser : pioche';
+    else el.textContent = hasPlayable(ME) ? '' : 'Rien à poser : pioche';   /* « À toi » : le bandeau suffit */
   } else { el.className = ''; el.textContent = nameOf(G.turn) + (busy ? ' joue…' : ' réfléchit…'); }
 }
 
