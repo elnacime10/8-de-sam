@@ -483,3 +483,22 @@ table.rt td.s{ width:38px; }
 /* entre deux tours : qui est prêt */
 #readyInfo{ text-align:center; margin:10px 0 0; font-size:13px; color:var(--text); }
 #readyInfo b{ color:var(--gold); }
+
+
+/* ===== Étape 1 — lisibilité : tout texte posé sur une plaque sombre ===== */
+:root{ --muted:#D8CDBB; --dim:#BDB2A0; }
+#bgShade{ background:linear-gradient(180deg, rgba(10,8,16,.55) 0%, rgba(10,8,16,.28) 16%, rgba(10,8,16,.50) 36%,
+  rgba(10,8,16,.66) 58%, rgba(10,8,16,.86) 76%, rgba(10,8,16,.94) 100%); }
+#topbar{ justify-content:space-between; }
+#matchInfo{ flex:0 1 auto; background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); border-radius:12px; padding:6px 11px; }
+#menuBtn{ background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); }
+#turnLine{ align-self:center; width:max-content; max-width:100%; box-sizing:border-box; padding:6px 14px;
+  border-radius:12px; background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); color:var(--text); }
+#turnLine:empty{ display:none; }
+#turnLine.you{ color:var(--gold); }
+#dirWrap{ background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); border-radius:10px; padding:4px 10px; color:var(--text); }
+#histCol .chip{ background:rgba(12,10,16,.84); }
+#histCol .chip.f0{ opacity:1; } #histCol .chip.f1{ opacity:.9; }
+#histCol .chip.f2{ opacity:.78; } #histCol .chip.f3{ opacity:.66; }
+#handCount, #deckInfo{ background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:5px 9px; color:var(--text); }
+#sortBtn{ background:rgba(12,10,16,.84); border:1px solid rgba(255,255,255,.14); color:var(--text); }
