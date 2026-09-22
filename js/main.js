@@ -110,6 +110,27 @@ speedIdx = SET.speed;
 refreshSet();
 refreshSetup();
 
+/* ---- Numéro de version : sur l'accueil et dans la pause ---- */
+const VERSION_JEU = '1.4';
+$('#versionHome').textContent = 'Version ' + VERSION_JEU;
+$('#versionMenu').textContent = 'Version ' + VERSION_JEU;
+
+/* ---- Mises à jour : le jeu va chercher la nouvelle version tout seul ---- */
 if ('serviceWorker' in navigator){
-  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  const dejaGere = !!navigator.serviceWorker.controller;   /* première visite : pas de rechargement */
+  let recharge = false;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      /* on revérifie chaque fois que le jeu revient au premier plan */
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
+    }).catch(() => {});
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!dejaGere || recharge) return;
+    const enPartie = (G && !G.over) || MATCH.online;
+    if (!enPartie){ recharge = true; location.reload(); }   /* hors partie : on recharge tout de suite */
+    else netBar('Nouvelle version prête : elle s\'installera à la prochaine ouverture du jeu.', true);
+  });
 }
