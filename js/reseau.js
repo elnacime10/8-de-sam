@@ -33,6 +33,7 @@ function minuteriesVivantes(){
          .filter(x => x[1]).map(x => x[0]);
 }
 function closeNet(msg, prevenir){
+  annuleVols();
   clearInterval(pingT); pingT = null;
   clearInterval(graceT); graceT = null;
   clearInterval(guestT); guestT = null;
@@ -177,7 +178,7 @@ function seatFor(c){
     c.seat = reprise;
     if (NET.grace) delete NET.grace[reprise];
     SG(reprise).conn = true;
-    flash(nameOf(reprise) + ' est de retour');
+    netBar(nameOf(reprise) + ' est de retour');
     try{ c.send({ t:'SEAT', seat:reprise, match:publicMatch() }); }catch(e){}
     broadcastState();
     return;
@@ -274,7 +275,7 @@ function onPeerGone(c){
   if (G && !G.over){
     if (!NET.grace) NET.grace = {};
     NET.grace[p] = Date.now();
-    flash(nameOf(p) + ' a perdu la connexion', true);
+    netBar(nameOf(p) + ' a perdu la connexion');
     netBar(nameOf(p) + ' est déconnecté — 30 secondes pour revenir', true);
     setTimeout(() => netBar(''), 5000);
     broadcastState();
@@ -555,7 +556,7 @@ function armChrono(){
     if (reste <= 0){
       const p = G.turn;
       stopChrono();
-      flash(nameOf(p) + ' : temps écoulé, pioche', true);
+      netBar(nameOf(p) + ' : temps écoulé');
       G.pending ? takeHit(p) : drawFree(p);
       render(); broadcastState();
       if (!G.over && isAI(G.turn)) runAI(); else armChrono();

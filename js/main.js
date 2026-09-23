@@ -50,7 +50,7 @@ async function startManche(){
   if (MATCH.online && !MATCH.host) return;      // seul l'hôte distribue
   stopChrono();
   busy = true; pending8 = -1;
-  FIL.length = 0; renderFil();
+  annuleVols(); FIL.length = 0; renderFil();
   lastBubbleMove = -9; lastBubbleWho = -1;
   newManche();
   $('#startScreen').classList.add('hidden');

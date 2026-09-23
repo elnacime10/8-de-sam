@@ -82,7 +82,7 @@ $('#drawBtn').addEventListener('click', async () => {
   if (!G.over && G.turn !== ME && isAI(G.turn)) runAI(); else armChrono();
 });
 
-$('#skipBtn').addEventListener('click', () => { skipAll = true; $('#skipBtn').classList.add('hidden'); });
+$('#skipBtn').addEventListener('click', () => { skipAll = true; annuleVols(); $('#skipBtn').classList.add('hidden'); });
 $('#sortBtn').addEventListener('click', () => {
   sortMode = sortMode === 'suit' ? 'rank' : 'suit';
   $('#sortBtn').textContent = 'Tri : ' + (sortMode === 'suit' ? 'couleur' : 'valeur');

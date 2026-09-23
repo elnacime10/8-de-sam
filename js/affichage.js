@@ -14,34 +14,58 @@ function handTarget(){
   const w = CW, ht = CH;
   return { left:h.left + h.width/2 - w/2, top:h.top + Math.max(0,(h.height-ht)/2), width:w, height:ht };
 }
+/* ---- Le vol d'une carte : un vrai geste ----
+   accélération au départ, arc, rotation, freinage et petit calage à l'arrivée.
+   Les vols en cours sont mémorisés pour pouvoir être annulés proprement. */
+const VOLS = new Set();
+const MOUVEMENT_REDUIT = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; } })();
+function annuleVols(){ VOLS.forEach(d => { try{ d.remove(); }catch(e){} }); VOLS.clear(); }
+
 function fly(from, to, html, flip){
   return new Promise(resolve => {
     const layer = $('#flyLayer');
     const a = rectOf(from), b = rectOf(to);
-    if (!a || !b || !layer){ resolve(); return; }
+    if (!a || !b || !layer || MOUVEMENT_REDUIT || skipAll){ resolve(); return; }
     const d = document.createElement('div');
-    d.className = 'flyer';
+    d.className = 'flyer' + (flip ? ' retourne' : '');
     d.style.cssText = `left:${a.left}px;top:${a.top}px;width:${a.width}px;height:${a.height}px;`;
-    d.innerHTML = html;
+    d.innerHTML = flip
+      ? `<div class="av">${html}</div><div class="ar"><div class="cardback"></div></div>`
+      : html;
     layer.appendChild(d);
-    const dx = b.left + (b.width-a.width)/2 - a.left;
-    const dy = b.top + (b.height-a.height)/2 - a.top;
-    const sc = Math.min(1.15, b.width / a.width);   /* une carte qui vole garde sa taille */
+    VOLS.add(d);
+
+    const dx = b.left + (b.width - a.width) / 2 - a.left;
+    const dy = b.top + (b.height - a.height) / 2 - a.top;
+    const sc = Math.min(1.1, b.width / a.width);
+    const len = Math.max(1, Math.hypot(dx, dy));
+    const arc = Math.min(70, len * 0.17);                 /* hauteur de l'arc */
+    const px = -dy / len * arc, py = dx / len * arc;      /* perpendiculaire au trajet */
+    const rot = (Math.random() * 9 - 4.5);                /* une carte n'arrive jamais droite */
     const ms = S(CONFIG.flyMs);
-    requestAnimationFrame(() => {
-      d.style.transition = `transform ${ms}ms cubic-bezier(.22,.75,.3,1)`;
-      d.style.transform = `translate(${dx}px,${dy}px) scale(${sc})` + (flip ? ' rotateY(360deg)' : '');
-    });
-    setTimeout(() => { d.remove(); resolve(); }, ms + 30);
+    const t = (x, y, r, k, f) => `translate(${Math.round(x)}px,${Math.round(y)}px) rotate(${r.toFixed(1)}deg) scale(${k.toFixed(3)})` + (flip ? ` rotateY(${f}deg)` : '');
+    const frames = [
+      { transform: t(0, 0, 0, 1, 180), offset:0,    easing:'cubic-bezier(.38,0,.55,.35)' },
+      { transform: t(dx*0.55 + px, dy*0.55 + py, rot*1.8, 1 + (sc-1)*0.6, 270), offset:0.55, easing:'cubic-bezier(.2,.6,.25,1)' },
+      { transform: t(dx*1.035, dy*1.035, rot*1.15, sc, 360), offset:0.86, easing:'ease-out' },
+      { transform: t(dx, dy, rot*0.35, sc, 360), offset:1 }
+    ];
+    let fini = false;
+    const finir = () => { if (fini) return; fini = true; VOLS.delete(d); try{ d.remove(); }catch(e){} resolve(); };
+    try {
+      const anim = d.animate(frames, { duration:ms, fill:'forwards' });
+      anim.onfinish = finir;
+      setTimeout(finir, ms + 120);                        /* filet : jamais de carte fantôme */
+    } catch(e){ setTimeout(finir, ms); }
   });
 }
 async function flyCards(cards, to, faceUp){
   const n = Math.min(cards.length, 5);
   for (let i = 0; i < n; i++){
     fly($('#drawSlot'), to, faceUp ? cardHTML(cards[i]) : '<div class="cardback" style="width:100%;height:100%"></div>', faceUp);
-    await sleep(S(150));
+    await sleep(S(160));
   }
-  await sleep(Math.max(0, S(CONFIG.flyMs) - S(150)) + (faceUp ? S(CONFIG.drawHoldMs) : 0));
+  await sleep(Math.max(0, S(CONFIG.flyMs) - S(160)) + (faceUp ? S(CONFIG.drawHoldMs) : 0));
 }
 const handEl = i => document.querySelector(`#hand .card[data-i="${i}"]`);
 const oppStackEl = p => document.querySelector(`.seat[data-p="${p}"] .opp`) || $('#drawSlot');
@@ -77,7 +101,7 @@ function renderFil(){
   el.innerHTML = vues.map((l, i) => {
     const age = vues.length - 1 - i;                    /* 0 = la plus récente */
     const moi = l.p === ME;
-    const qui = moi ? 'Toi' : nameOf(l.p);
+    const qui = nameOf(l.p);      /* chacun est appelé par son nom, y compris moi */
     const corps = l.genre === 'dit' ? `<i>«&nbsp;${l.texte}&nbsp;»</i>` : l.texte;
     return `<div class="fl a${age}${moi ? ' moi' : ''}"><span class="q">${qui}</span>${corps}</div>`;
   }).join('');
@@ -230,7 +254,7 @@ function render(){
   }
 
   const dw = $('#dirWrap');
-  dw.style.display = MATCH.n > 2 ? 'flex' : 'none';
+  dw.style.display = (MATCH.n > 2 && G.dir === -1) ? 'flex' : 'none';   /* seulement quand le sens est inversé */
   const ar = $('#dirArrow');
   ar.textContent = G.dir === 1 ? '↻' : '↺';
   if (lastDir !== null && lastDir !== G.dir){
@@ -307,27 +331,23 @@ function setTurnLine(){
     if (G.pending) el.textContent = 'Contre avec un ' + (G.pending.type === 'A' ? 'as' : '9') + ' ou encaisse ' + G.pending.amount;
     else if (G.freeStart) el.textContent = 'Tu ouvres : pose la carte que tu veux';
     else el.textContent = hasPlayable(ME) ? '' : 'Rien à poser : pioche';   /* « À toi » : le bandeau suffit */
-  } else { el.className = ''; el.textContent = nameOf(G.turn) + (busy ? ' joue…' : ' réfléchit…'); }
+  } else { el.className = ''; el.textContent = ''; }   /* la vignette dit déjà qui joue */
 }
 
 
 /* ---- Ce qu'a fait le joueur précédent, écrit en clair ---- */
 let lastActShown = 0;
-/* Le fil n'est pas un journal de toutes les cartes : l'historique est là pour ça.
-   Il ne garde que ce qui se raconte : attaques, encaissements, tours sautés,
-   changements de sens, dernières cartes et sorties. */
+/* Le fil ne raconte que ce qu'on ne peut pas deviner : les cartes qu'on mange.
+   Le reste — cartes posées, pioches, tours sautés — se voit sur la table. */
 function renderAct(){
   const a = G && G.lastAct;
   if (!a || a.n === lastActShown) return;
   lastActShown = a.n;
-  const gras = t => '<b>' + t + '</b>';
+  if (a.k !== 'take') return;
+  const n = a.amt || 1;
   let t = null;
-  if (a.k === 'take') t = 'encaisse ' + gras((a.amt || 1) + ' carte' + ((a.amt || 1) > 1 ? 's' : ''));
-  else if (a.k === 'play'){
-    if (a.amt && (a.r === 'A' || a.r === '9')) t = 'attaque ' + gras('+' + a.amt);
-    else if (a.skip !== undefined) t = (a.skip === ME ? 'te fait sauter ton tour' : 'fait sauter ' + nameOf(a.skip));
-    else if (a.rev) t = 'inverse le sens';
-  }
+  if (a.typ === '9') t = 'mange un <b>9</b>';
+  else if (a.typ === 'A') t = (n <= 2) ? 'mange un <b>As</b>' : 'mange <b>' + (n / 2) + ' As</b>';
   if (t) filAjoute(a.p, t, 'coup');
 }
 
@@ -361,6 +381,7 @@ function ajusteTable(){
   try { ajusteTableSur(); } catch(e){ /* une mesure ratée ne doit jamais empêcher la partie de s'afficher */ }
 }
 function ajusteTableSur(){
+  if (VOLS.size) return;                 /* une carte est en l'air : la table ne bouge pas */
   const t = $('#table'); if (!t || !t.children || typeof getComputedStyle !== 'function') return;
   const r = document.documentElement.style;
   const besoin = () => {

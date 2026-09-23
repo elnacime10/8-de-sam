@@ -121,7 +121,7 @@ function refill(){
   G.deck = shuffle(G.discard.slice());
   G.discard = [];
   G.reshuffles++;
-  flash('Pioche remélangée');
+
 }
 function draw(p, n){
   let got = 0;
@@ -192,7 +192,7 @@ function playCard(p, idx, suitChoice){
   if (G.hands[p].length === 0){
     if (forbiddenFinish(c.r)){
       draw(p, 1);
-      flash(nameOf(p) + ' finit sur un ' + c.r + ' : repioche', true);
+
       advance(p, false);
       return;
     }
@@ -222,12 +222,12 @@ function weakOf(p, s){ return (G.weak[p] && G.weak[p][s]) || 0; }
 
 function takeHit(q){
   const amt = G.pending ? G.pending.amount : 1;
-  G.actNo++; G.lastAct = { n:G.actNo, p:q, k:'take', amt };
+  G.actNo++; G.lastAct = { n:G.actNo, p:q, k:'take', amt, typ:(G.pending ? G.pending.type : '') };
   const got = draw(q, amt);
   noteDraw(q);
   const w = G.pendingWinner;
   G.pending = null; G.pendingWinner = null;
-  flash(nameOf(q) + ' encaisse ' + got, true);
+
   if (w !== null && w !== q) goOut(w);
   if (G.over) return got;
   G.turn = nextSeat(q);
@@ -239,7 +239,7 @@ function drawFree(p){
   G.actNo++; G.lastAct = { n:G.actNo, p, k:'draw' };
   draw(p, 1);
   noteDraw(p);
-  flash(nameOf(p) + ' pioche');
+
   advance(p, false);
 }
 
@@ -254,8 +254,8 @@ function goOut(p){
   }
   SFX.out();
   bubble(p, G.out.length === 1 ? 'out' : 'lose');
-  flash(nameOf(p) + ' sort — place ' + G.out.length, true);
-  if (left === 2 && MATCH.n > 2) flash('Passage en face à face', true);
+  if (MATCH.n > 2) filAjoute(p, 'est ' + G.out.length + (G.out.length === 1 ? 'er' : 'e'), 'coup');
+
 }
 
 /* Un joueur qui quitte est disqualifié : il sort en dernière position et la partie continue. */
@@ -263,7 +263,7 @@ function disqualify(p, raison){
   if (!G || G.over || !G.in[p]) return;
   G.in[p] = false;
   G.hands[p] = [];
-  flash(nameOf(p) + ' quitte la partie', true);
+  netBar(nameOf(p) + ' quitte la partie');
   if (G.pending && G.pending.target === p){ G.pending = null; G.pendingWinner = null; }
   const reste = seats().filter(q => G.in[q]);
   if (reste.length <= 1){ for (const q of reste) G.out.push(q); G.out.push(p); endManche(); return; }
@@ -305,7 +305,7 @@ function openManche(){
         G.playedRanks[c.r] = 1;
         G.turn = p;
         if (activeN() > 2) advance(p, false);        // à 3 : pas de seconde carte
-        flash(nameOf(p) + ' ouvre avec ' + c.r + SUIT_CHAR[c.s]);
+
         render();
         if (G.turn !== ME) runAI();
         return;
@@ -327,14 +327,12 @@ function departage(){
     starter = right ? chooser : (chooser === 0 ? 1 : 0);
     G.deck.push(c); shuffle(G.deck);
     MATCH.nextChooser = chooser === 0 ? 1 : 0;
-    flash((chooser === ME ? 'Tu annonces ' : nameOf(chooser) + ' annonce ') + (pick === 'r' ? 'rouge' : 'noir') + ' — ' + c.r + SUIT_CHAR[c.s]);
   } else {
     const tirs = seats().filter(p => G.in[p]).map(p => { refill(); return { p, c:G.deck.pop() }; });
     tirs.sort((a,b) => (RANKS.indexOf(b.c.r) - RANKS.indexOf(a.c.r)) || (SUITS.indexOf(a.c.s) - SUITS.indexOf(b.c.s)));
     starter = tirs[0].p;
     for (const t of tirs) G.deck.push(t.c);
     shuffle(G.deck);
-    flash(nameOf(starter) + ' tire ' + tirs[0].c.r + SUIT_CHAR[tirs[0].c.s] + ' et ouvre');
   }
   G.turn = starter;
   G.freeStart = true;

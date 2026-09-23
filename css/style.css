@@ -628,3 +628,25 @@ table.rt td.s{ width:38px; }
   margin-top:4px; font-size:8px; padding:2px 2px; letter-spacing:0; }
 #oppRow.two .seat .opp{ padding-top:8px; }
 #table.serre{ justify-content:flex-start; }
+
+
+/* ---- le vol des cartes : deux faces pour le retournement ---- */
+.flyer{ transform-style:preserve-3d; will-change:transform; }
+.flyer.retourne .av, .flyer.retourne .ar{ position:absolute; inset:0; backface-visibility:hidden; }
+.flyer.retourne .ar{ transform:rotateY(180deg); }
+.flyer.retourne .ar .cardback{ width:100%; height:100%; }
+
+/* ---- le menu pause tenait sur une seule rangée d'icônes : cinq ne rentrent pas ---- */
+.iconRow{ flex-wrap:wrap; }
+.iconRow .iconBtn{ flex:1 1 44%; min-width:0; }
+
+/* ---- la carte du restaurant porte son titre ---- */
+:root[data-world="sushi"] #fil:after{
+  content:'Menu'; position:absolute; top:3px; right:10px;
+  font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; font-size:12px;
+  color:#A82D26; opacity:.75; letter-spacing:1px; pointer-events:none; }
+:root[data-world="sushi"] #fil{ padding-top:14px; }
+
+/* ---- les répliques passent devant : c'est ce qui fait vivre la partie ---- */
+#fil .fl i{ font-style:italic; font-weight:700; }
+#fil .a0 i{ font-size:13px; }
