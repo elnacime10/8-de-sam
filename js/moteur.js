@@ -31,6 +31,7 @@ const MATCH = {
   online:false, host:false, code:'',
   nextChooser:undefined
 };
+let CHAINE = [0,0,0,0,0];        // observation seule : ne change aucune règle
 const SG = p => MATCH.seats[p] || siegeNeuf('sam','moyen');     // le siège p
 const champs = k => MATCH.seats.map(s => s[k]);                 // la colonne k, pour l'affichage ou le réseau
 
@@ -99,7 +100,8 @@ function nextSeat(p){
 const duel = () => countIn() <= 2;
 
 function newManche(){
-  verifieSieges();                      // jamais de manche sur un état incohérent
+  verifieSieges();
+  CHAINE = [0,0,0,0,0];            // cartes posées d'affilée, par joueur                      // jamais de manche sur un état incohérent
   G = {
     deck:newDeck(), discard:[], hands:[], top:null, activeSuit:null, freeStart:false,
     dir:1, in:[], out:[], turn:ME, pending:null, pendingWinner:null, openingExtra:null,
@@ -204,10 +206,12 @@ function playCard(p, idx, suitChoice){
 
   if (G.pending){ G.turn = G.pending.target; return; }
   if (!replay && G.openingExtra === p){ replay = true; G.openingExtra = null; }
+  if (replay) CHAINE[p] = (CHAINE[p] || 0) + 1;   // il garde la main : la chaîne monte
   if (!replay) advance(p, skip);
 }
 
 function advance(p, skip){
+  CHAINE[p] = 0;                   // la main passe : la chaîne s'arrête
   G.openingExtra = null;
   let q = nextSeat(p);
   if (skip) q = nextSeat(q);
@@ -253,8 +257,8 @@ function goOut(p){
     return;
   }
   SFX.out();
-  bubble(p, G.out.length === 1 ? 'out' : 'lose');
-  if (MATCH.n > 2) filAjoute(p, 'est ' + G.out.length + (G.out.length === 1 ? 'er' : 'e'), 'coup');
+  if (MATCH.n > 2) filAjoute(p, 'est <b>' + G.out.length + (G.out.length === 1 ? 'er' : 'e') + '</b>', 'coup', 'content', 3);
+  bubble(p, G.out.length === 1 ? 'out' : 'lose', true);
 
 }
 

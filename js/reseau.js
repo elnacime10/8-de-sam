@@ -361,7 +361,9 @@ function onGuestData(d){
     /* une nouvelle manche chasse l'écran de fin (c'était le blocage de « rejouer ») */
     if (!g.over) $('#endScreen').classList.add('hidden');
     /* les statistiques de l'invité comptent aussi, une fois par manche */
-    if (g.over && g.mid && g.mid !== countedMid){ countedMid = g.mid; noteResult(g.out[0] === ME); }
+    if (g.over && g.mid && g.mid !== countedMid && (MATCH.n === 2 || MATCH.tour >= MATCH.tours)){
+      countedMid = g.mid; noteResult(classementMatch());
+    }
     sizeUp(); render();
     guestFeedback(g, monTour);
     guestChrono(d.chrono);
@@ -381,10 +383,8 @@ function guestFeedback(g, monTourAvant){
     if (a.k === 'play'){
       (a.r === 'A' || a.r === '9') ? SFX.atk(g.pending ? g.pending.amount : 2) : SFX.play();
       if (a.p !== ME){
-        if (a.r === 'A' || a.r === '9') bubble(a.p, 'atk');
-        else if (G.hands[ME].length === 1) bubble(a.p, 'low');
       }
-    } else { SFX.draw(); if (a.p !== ME && a.k === 'take') bubble(a.p, 'hit'); }
+    } else SFX.draw();
   }
   if (G.turn === ME && !monTourAvant && !G.over) SFX.mine();
 }

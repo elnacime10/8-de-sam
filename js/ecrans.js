@@ -37,8 +37,7 @@ async function doPlay(i, suit){
   const from = rectOf(handEl(i)) || rectOf($('#drawSlot'));
   hideSuitBar();
   render();
-  SFX.play();
-  await fly(from, $('#discardSlot'), cardHTML(c), true);
+  await fly(from, $('#discardSlot'), cardHTML(c), false, () => SFX.play());
   stopChrono();
   playCard(ME, i, suit);
   busy = false;
@@ -346,9 +345,8 @@ function endManche(){
     const pts = pointsFor(activeN());
     G.out.forEach((p, i) => { SG(p).score += (pts[i] !== undefined ? pts[i] : 0); });
   }
-  noteResult(G.out[0] === ME);
-  if (MATCH.n > 2 && MATCH.tour >= MATCH.tours){
-  }
+  /* le résultat ne compte qu'à la fin du match, pas à chaque manche */
+  if (MATCH.n === 2 || MATCH.tour >= MATCH.tours) noteResult(classementMatch());
   if (MATCH.online && MATCH.host) broadcastState();
   SFX.end();
   setTimeout(showEnd, S(1400));
@@ -395,23 +393,31 @@ function showEnd(){
       }
     } else $('#againBtn').textContent = 'Tour suivant';
   }
-  const champ = MATCH.n === 2 ? G.out[0]
+  /* à plusieurs, le premier encadré c'est TOI : ta place, ton résultat.
+     Le champion vient ensuite. En face à face, rien ne change. */
+  const vainqueur = MATCH.n === 2 ? G.out[0]
     : (MATCH.tour >= MATCH.tours && !$('#againBtn').textContent.includes('départage')
        ? seats().slice().sort((a,b) => (SG(a).dq - SG(b).dq) || (SG(b).score - SG(a).score))[0] : G.out[0]);
+  const champ = (MATCH.n > 2 && G.out.indexOf(ME) >= 0) ? ME : vainqueur;
   if (champ === undefined || champ === null){ $('#winBox').style.display = 'none'; }
   else {
   $('#winBox').style.display = 'flex';
   $('#winFace').src = faceOf(champ);
-  $('#winName').textContent = champ === ME ? 'Toi' : nameOf(champ);
+  $('#winName').textContent = nameOf(champ);
+  const maPl = G.out.indexOf(ME);
+  const rangs = ['1er', '2e', '3e', '4e', '5e'];
   $('#winLine').textContent = champ === ME
-    ? 'Bien joué.'
+    ? (MATCH.n > 2 && maPl >= 0 ? rangs[maPl] + ' de la manche' : 'Bien joué.')
     : (lineFor(champ, 'out') || 'Voilà.');
   }
-  if (last !== undefined && last !== champ){
+  const second = (MATCH.n > 2 && champ === ME && vainqueur !== ME) ? vainqueur : last;
+  if (second !== undefined && second !== champ){
     $('#loseBox').style.display = 'flex';
-    $('#loseFace').src = faceOf(last);
-    $('#loseName').textContent = last === ME ? 'Toi' : nameOf(last);
-    $('#loseLine').textContent = last === ME ? 'Ça arrive.' : (lineFor(last, 'lose') || '...');
+    $('#loseFace').src = faceOf(second);
+    $('#loseName').textContent = nameOf(second);
+    $('#loseLine').textContent = second === vainqueur && second !== last
+      ? 'Remporte la partie.'
+      : (second === ME ? 'Ça arrive.' : (lineFor(second, 'lose') || '...'));
   } else $('#loseBox').style.display = 'none';
   $('#endLabel').textContent = rest.length
     ? 'La main de ' + nameOf(last) + ' — ' + rest.length + ' carte' + (rest.length > 1 ? 's' : '')

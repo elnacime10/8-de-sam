@@ -50,8 +50,7 @@ async function startManche(){
   if (MATCH.online && !MATCH.host) return;      // seul l'hôte distribue
   stopChrono();
   busy = true; pending8 = -1;
-  annuleVols(); FIL.length = 0; renderFil();
-  lastBubbleMove = -9; lastBubbleWho = -1;
+  annuleVols(); filVide();
   newManche();
   $('#startScreen').classList.add('hidden');
   $('#endScreen').classList.add('hidden');
@@ -114,7 +113,7 @@ refreshSet();
 refreshSetup();
 
 /* ---- Numéro de version : sur l'accueil et dans la pause ---- */
-const VERSION_JEU = '2.1';
+const VERSION_JEU = '2.2';
 $('#versionHome').textContent = 'Version ' + VERSION_JEU;
 $('#versionMenu').textContent = 'Version ' + VERSION_JEU;
 

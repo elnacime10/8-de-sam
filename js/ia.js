@@ -181,18 +181,17 @@ async function runAI(){
     if (d.action === 'take'){
       const n0 = G.hands[p].length;
       takeHit(p);
-      if (!skipAll){ bubble(p, 'hit'); await flyCards(G.hands[p].slice(n0), stack, false); }
+      if (!skipAll){ await flyCards(G.hands[p].slice(n0), stack, false); }
     } else if (d.action === 'draw'){
       const n0 = G.hands[p].length;
       drawFree(p);
       if (!skipAll) await flyCards(G.hands[p].slice(n0), stack, false);
     } else {
       const c = G.hands[p][d.idx];
-      if (!skipAll){ (c.r === 'A' || c.r === '9') ? SFX.atk(G.pending ? G.pending.amount : 2) : SFX.play(); await fly(stack, $('#discardSlot'), cardHTML(c), true); }
+      if (!skipAll) await fly(stack, $('#discardSlot'), cardHTML(c), false,
+        () => (c.r === 'A' || c.r === '9') ? SFX.atk(G.pending ? G.pending.amount : 2) : SFX.play());
       playCard(p, d.idx, d.suit);
       if (!skipAll){
-        if (c.r === 'A' || c.r === '9') bubble(p, 'atk');
-        else if (G.hands[ME].length === 1 && G.in[ME]) bubble(p, 'low');
       }
     }
     render();

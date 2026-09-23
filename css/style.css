@@ -556,17 +556,18 @@ table.rt td.s{ width:38px; }
 /* ===================== LE FIL =====================
    Un seul endroit où l'on suit ce qui se raconte. Hauteur fixe,
    une ligne par message, jamais de retour à la ligne. */
-#fil{ --fl:17px; flex:0 0 auto; width:100%; box-sizing:border-box; padding:8px 12px; border-radius:10px;
-  display:flex; flex-direction:column; justify-content:flex-end; gap:3px; overflow:hidden; position:relative;
-  height:calc(var(--fl) * 3 + 22px); font-size:11.5px; line-height:var(--fl); }
+#fil{ --fl:19px; flex:0 0 auto; width:100%; box-sizing:border-box; padding:9px 12px; border-radius:10px;
+  display:flex; flex-direction:column; justify-content:flex-end; gap:2px; overflow:hidden; position:relative;
+  height:calc(var(--fl) * 4 + 20px); font-size:12px; line-height:var(--fl); }
 #fil[data-lignes="2"]{ height:calc(var(--fl) * 2 + 22px); }
 #fil[data-lignes="1"]{ height:calc(var(--fl) + 22px); }
 #fil .fl{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-#fil .fl.moi{ text-align:right; }
+
 #fil .q{ margin-right:6px; }
-#fil .a0{ font-size:12px; }
-#fil .a1{ opacity:.55; font-size:10.5px; }
-#fil .a2{ opacity:.3;  font-size:10px; }
+
+#fil .a1{ opacity:.66; }
+#fil .a2{ opacity:.44; }
+#fil .a3{ opacity:.26; }
 #fil .a0{ animation:filNew .3s ease-out; }
 @keyframes filNew{ from{ transform:translateY(6px); opacity:0; } to{ transform:none; opacity:1; } }
 
@@ -607,19 +608,17 @@ table.rt td.s{ width:38px; }
 
 /* ---------- SUSHI : la carte du restaurant ---------- */
 :root[data-world="sushi"] #fil{
-  color:#2B211A; font-family:'Cormorant Garamond',Georgia,serif; font-size:14px;
+  color:#2B211A; font-family:'Cormorant Garamond',Georgia,serif; font-size:13px; --fl:20px;
   background:
     repeating-linear-gradient(90deg, rgba(150,120,80,.05) 0 2px, transparent 2px 6px),
     linear-gradient(180deg, #F6EEDC, #EADFC6);
   border:1px solid #C9B490; border-left:5px double #A82D26; border-radius:3px;
   box-shadow:0 4px 12px rgba(0,0,0,.45), inset 0 0 22px rgba(168,45,38,.06); }
-:root[data-world="sushi"] #fil .fl{ border-bottom:1px dotted rgba(120,90,60,.35); padding-bottom:1px; }
+:root[data-world="sushi"] #fil .fl{ background-image:linear-gradient(to right, rgba(120,90,60,.35) 35%, transparent 0);
+  background-size:4px 1px; background-repeat:repeat-x; background-position:0 calc(100% - 1px); }
 :root[data-world="sushi"] #fil .q{
   font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; font-weight:600;
   color:#A82D26; font-size:14px; letter-spacing:.4px; }
-:root[data-world="sushi"] #fil .a0{ font-size:14.5px; }
-:root[data-world="sushi"] #fil .a1{ font-size:13px; }
-:root[data-world="sushi"] #fil .a2{ font-size:12.5px; }
 :root[data-world="sushi"] #fil .r{ color:#A82D26; }
 :root[data-world="sushi"] #fil b{ color:#6B4A12; }
 
@@ -650,3 +649,13 @@ table.rt td.s{ width:38px; }
 /* ---- les répliques passent devant : c'est ce qui fait vivre la partie ---- */
 #fil .fl i{ font-style:italic; font-weight:700; }
 #fil .a0 i{ font-size:13px; }
+
+
+/* ---- la pioche maigrit : trois épaisseurs, deux, puis une ---- */
+#drawSlot .backcard{ transition:box-shadow .3s; }
+#drawSlot[data-ep="2"] .backcard{ box-shadow:3px 3px 0 -1px #0b0910, 3px 3px 0 0 rgba(212,170,90,.55), 0 8px 16px rgba(0,0,0,.5); }
+#drawSlot[data-ep="1"] .backcard{ box-shadow:0 8px 16px rgba(0,0,0,.5); }
+#drawSlot[data-ep="0"] .backcard{ opacity:.25; box-shadow:none; }
+
+/* ---- les cartes de la main glissent au lieu de sauter ---- */
+#hand .card{ will-change:transform; }

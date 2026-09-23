@@ -21,23 +21,26 @@ const VOLS = new Set();
 const MOUVEMENT_REDUIT = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; } })();
 function annuleVols(){ VOLS.forEach(d => { try{ d.remove(); }catch(e){} }); VOLS.clear(); }
 
-function fly(from, to, html, flip){
+function fly(from, to, html, flip, son){   /* son = joué à l'impact, pas au départ */
   return new Promise(resolve => {
     const layer = $('#flyLayer');
     const a = rectOf(from), b = rectOf(to);
     if (!a || !b || !layer || MOUVEMENT_REDUIT || skipAll){ resolve(); return; }
+    /* une carte a toujours la taille d'une carte : elle part du centre de sa
+       source, quelle que soit la taille de celle-ci (vignette, bande, pioche) */
+    const w = CW, h = CH;
     const d = document.createElement('div');
     d.className = 'flyer' + (flip ? ' retourne' : '');
-    d.style.cssText = `left:${a.left}px;top:${a.top}px;width:${a.width}px;height:${a.height}px;`;
+    d.style.cssText = `left:${a.left + a.width/2 - w/2}px;top:${a.top + a.height/2 - h/2}px;width:${w}px;height:${h}px;`;
     d.innerHTML = flip
       ? `<div class="av">${html}</div><div class="ar"><div class="cardback"></div></div>`
       : html;
     layer.appendChild(d);
     VOLS.add(d);
 
-    const dx = b.left + (b.width - a.width) / 2 - a.left;
-    const dy = b.top + (b.height - a.height) / 2 - a.top;
-    const sc = Math.min(1.1, b.width / a.width);
+    const dx = (b.left + b.width/2) - (a.left + a.width/2);
+    const dy = (b.top + b.height/2) - (a.top + a.height/2);
+    const sc = Math.max(0.42, Math.min(1.45, b.width / w));    /* grandit vers la défausse, rétrécit vers une vignette */
     const len = Math.max(1, Math.hypot(dx, dy));
     const arc = Math.min(70, len * 0.17);                 /* hauteur de l'arc */
     const px = -dy / len * arc, py = dx / len * arc;      /* perpendiculaire au trajet */
@@ -51,7 +54,7 @@ function fly(from, to, html, flip){
       { transform: t(dx, dy, rot*0.35, sc, 360), offset:1 }
     ];
     let fini = false;
-    const finir = () => { if (fini) return; fini = true; VOLS.delete(d); try{ d.remove(); }catch(e){} resolve(); };
+    const finir = () => { if (fini) return; fini = true; VOLS.delete(d); try{ d.remove(); }catch(e){} if (son) son(); resolve(); };
     try {
       const anim = d.animate(frames, { duration:ms, fill:'forwards' });
       anim.onfinish = finir;
@@ -74,50 +77,71 @@ const oppStackEl = p => document.querySelector(`.seat[data-p="${p}"] .opp`) || $
    6 · RENDU
    ============================================================ */
 let flashT = null, lastDir = null;
-let lastBubbleMove = -9, lastBubbleWho = -1;
+
+/* ---- Les répliques ----
+   Un sac par personnage et par situation : on tire sans remise, donc une
+   phrase ne revient jamais avant que les autres soient passées.
+   Un crédit de parole évite le brouhaha sans faire taire les moments forts. */
+const SACS = {};
+const CREDIT = [2,2,2,2,2];
+const HUMEUR = { atk:'malin', hit:'enerve', low:'malin', out:'content', lose:'enerve' };
 
 function lineFor(p, kind){
   const set = LINES[SG(p).char];
   if (!set || !set[kind] || !set[kind].length) return null;
-  const l = set[kind][Math.floor(Math.random() * set[kind].length)];
+  const cle = SG(p).char + ':' + kind;
+  if (!SACS[cle] || !SACS[cle].length) SACS[cle] = set[kind].map((_, i) => i).sort(() => Math.random() - 0.5);
+  const l = set[kind][SACS[cle].pop()];
   return SET.trash ? l.t : l.c;
 }
+function rechargeParole(){ for (let p = 0; p < 5; p++) CREDIT[p] = Math.min(2, CREDIT[p] + 1); }
 /* Une bulle à la fois, jamais deux fois de suite le même, et pas à chaque coup. */
 /* ---- LE FIL : un seul endroit où tout s'écrit, coups et répliques ----
    Plus de bulle posée sur un portrait, plus de bandeau séparé, plus de
    minuterie d'effacement : le fil défile, c'est tout. */
 const FIL = [];
-function filAjoute(p, texte, genre){
-  const d = FIL[FIL.length - 1];
-  if (d && d.p === p && d.texte === texte && d.genre === genre) return;   /* pas deux fois la même ligne */
-  FIL.push({ p, texte, genre, n:(G ? G.actNo : 0) });
-  if (FIL.length > 12) FIL.shift();
-  renderFil();
+const ATTENTE = [];
+let filT = null;
+/* les lignes sortent espacées : trois messages d'un coup deviendraient illisibles */
+function filAjoute(p, texte, genre, humeur, priorite){
+  ATTENTE.push({ p, texte, genre, humeur:humeur || '', pr:priorite || (genre === 'dit' ? 1 : 2) });
+  if (ATTENTE.length > 6) ATTENTE.sort((a, b) => b.pr - a.pr).splice(4);   /* on abandonne le moins important */
+  if (!filT) filSuivant();
 }
+function filSuivant(){
+  const l = ATTENTE.shift();
+  if (!l){ filT = null; return; }
+  const d = FIL[FIL.length - 1];
+  if (!(d && d.p === l.p && d.texte === l.texte && d.genre === l.genre)){
+    FIL.push(l);
+    if (FIL.length > 14) FIL.shift();
+    renderFil();
+  }
+  filT = setTimeout(filSuivant, S(330));
+}
+function filVide(){ ATTENTE.length = 0; clearTimeout(filT); filT = null; FIL.length = 0; renderFil(); }
 function renderFil(){
   const el = $('#fil'); if (!el) return;
-  const max = +(el.dataset.lignes || 3);
+  const max = +(el.dataset.lignes || 4);
   const vues = FIL.slice(-max);
   el.innerHTML = vues.map((l, i) => {
-    const age = vues.length - 1 - i;                    /* 0 = la plus récente */
-    const moi = l.p === ME;
-    const qui = nameOf(l.p);      /* chacun est appelé par son nom, y compris moi */
+    const age = vues.length - 1 - i;
     const corps = l.genre === 'dit' ? `<i>«&nbsp;${l.texte}&nbsp;»</i>` : l.texte;
-    return `<div class="fl a${age}${moi ? ' moi' : ''}"><span class="q">${qui}</span>${corps}</div>`;
+    return `<div class="fl a${Math.min(age, 3)}" data-h="${l.humeur}"><span class="q">${nameOf(l.p)}</span>${corps}</div>`;
   }).join('');
 }
 /* les répliques des personnages passent par le fil */
-function bubble(p, kind){
-  if (p === ME || !G || skipAll) return;
+function bubble(p, kind, force){
+  if (!G || skipAll) return;
   if (G.over && kind !== 'out' && kind !== 'lose') return;
-  const fin = (kind === 'out' || kind === 'lose');
-  if (!fin && G.moveNo - lastBubbleMove < CONFIG.bubbleGap) return;
-  if (!fin && MATCH.n > 2 && p === lastBubbleWho) return;
+  const majeur = force || kind === 'out' || kind === 'lose';
+  if (!majeur){
+    if (CREDIT[p] <= 0) return;
+    CREDIT[p]--;
+  }
   const txt = lineFor(p, kind);
   if (!txt) return;
-  lastBubbleMove = G.moveNo; lastBubbleWho = p;
-  filAjoute(p, txt, 'dit');
-  SFX.bub && SFX.bub();
+  filAjoute(p, txt, 'dit', HUMEUR[kind] || '');
 }
 function flash(txt, hot){
   const el = $('#flash');
@@ -228,6 +252,7 @@ function render(){
   renderHist();
 
   $('#drawCount').textContent = G.deck.length;
+  $('#drawSlot').dataset.ep = G.deck.length > 20 ? 3 : (G.deck.length > 8 ? 2 : (G.deck.length > 0 ? 1 : 0));
   const ds = $('#discardSlot');
   if (G.top){
     ds.classList.remove('empty');
@@ -267,6 +292,9 @@ function render(){
     : (G.dir === 1 ? 'sens horaire' : 'sens inversé');
 
   const hand = $('#hand'), cards = G.hands[ME];
+  /* on retient où était chaque carte pour la faire glisser à sa nouvelle place */
+  const avant = {};
+  hand.querySelectorAll('.card').forEach(e => { if (e.dataset.k) avant[e.dataset.k] = e.getBoundingClientRect(); });
   hand.innerHTML = '';
   $('#handCount').textContent = cards.length + (cards.length > 1 ? ' cartes' : ' carte');
   const cw = CW, avail = Math.max(120, hand.clientWidth - 8);
@@ -296,7 +324,21 @@ function render(){
       el.style.setProperty('--t', `rotate(${rot}deg) translateY(${Math.abs(k-mid)*1.3}px)`);
       if (i === selected) el.classList.add('sel');
       el.addEventListener('click', ev => { ev.stopPropagation(); onCardClick(i, el); });
+      el.dataset.k = c.r + c.s;
       hand.appendChild(el);
+      const vieux = avant[el.dataset.k];
+      if (vieux){
+        const neuf = el.getBoundingClientRect();
+        const ddx = vieux.left - neuf.left, ddy = vieux.top - neuf.top;
+        if (Math.abs(ddx) > 1 || Math.abs(ddy) > 1){
+          el.style.transition = 'none';
+          el.style.transform = `translate(${ddx}px,${ddy}px)`;
+          requestAnimationFrame(() => {
+            el.style.transition = 'transform ' + S(260) + 'ms cubic-bezier(.2,.7,.3,1)';
+            el.style.transform = '';
+          });
+        }
+      }
     });
   });
 
@@ -337,19 +379,48 @@ function setTurnLine(){
 
 /* ---- Ce qu'a fait le joueur précédent, écrit en clair ---- */
 let lastActShown = 0;
-/* Le fil ne raconte que ce qu'on ne peut pas deviner : les cartes qu'on mange.
-   Le reste — cartes posées, pioches, tours sautés — se voit sur la table. */
+const DUEL_BONUS = () => (MATCH.n === 2 ? 1.7 : 1);     /* à deux, personne pour commenter : on parle plus */
+const tire = pr => Math.random() < pr * DUEL_BONUS();
+
+/* Le fil raconte ce qu'on ne peut pas deviner, et les personnages réagissent. */
 function renderAct(){
   const a = G && G.lastAct;
   if (!a || a.n === lastActShown) return;
+  const premier = lastActShown === 0;
   lastActShown = a.n;
-  if (a.k !== 'take') return;
-  const n = a.amt || 1;
-  let t = null;
-  if (a.typ === '9') t = 'mange un <b>9</b>';
-  else if (a.typ === 'A') t = (n <= 2) ? 'mange un <b>As</b>' : 'mange <b>' + (n / 2) + ' As</b>';
-  if (t) filAjoute(a.p, t, 'coup');
+  rechargeParole();
+
+  /* 1. ce qu'on mange */
+  if (a.k === 'take'){
+    const n = a.amt || 1;
+    if (a.typ === '9'){ filAjoute(a.p, 'mange un <b>9</b>', 'coup', 'enerve');
+      if (tire(0.5)) bubble(a.p, 'hit'); }
+    else if (a.typ === 'A'){ filAjoute(a.p, n <= 2 ? 'mange un <b>As</b>' : 'mange <b>' + (n/2) + ' As</b>', 'coup', 'enerve');
+      if (tire(n > 2 ? 0.9 : 0.6)) bubble(a.p, 'hit'); }
+  }
+
+  /* 2. ce qu'on pose */
+  if (a.k === 'play'){
+    const contre = a.amt && a.amt > 2;
+    if (a.r === 'A'){ if (tire(contre ? 0.9 : 0.55)) bubble(a.p, 'atk'); }
+    else if (a.r === '9'){ if (tire(0.35)) bubble(a.p, 'atk'); }
+    else if (a.skip !== undefined){ if (tire(0.3)) bubble(a.p, 'atk'); }
+    if ((CHAINE[a.p] || 0) >= 3) bubble(a.p, 'atk', true);        /* un enchaînement, ça se fête */
+  }
+
+  /* 3. l'annonce : tout le monde annonce sa dernière carte, comme dans la vraie vie */
+  if (!premier) seats().forEach(p => {
+    if (!G.in[p]) return;
+    const n = G.hands[p].length;
+    if (n === 1 && ANNONCE[p] !== G.mid){
+      ANNONCE[p] = G.mid;
+      filAjoute(p, '<b>Carte !</b>', 'coup', 'malin', 3);
+      seats().forEach(q => { if (q !== p && G.in[q] && tire(0.35)) bubble(q, 'low'); });
+    }
+    if (n > 1) ANNONCE[p] = null;
+  });
 }
+const ANNONCE = [null,null,null,null,null];
 
 /* ---- La couleur demandée par un 8 recouvre la carte, et teinte la table ---- */
 /* symboles dessinés (pleins, nets, sans rien qui transparaisse) */
@@ -412,12 +483,13 @@ function ajusteTableSur(){
   let garde = 0;
   while (trop() && pw > 48 && garde++ < 20){ pw -= 6; pose(pw); }
   const fil = $('#fil');
-  if (fil && fil.dataset.lignes !== '3'){ fil.dataset.lignes = 3; renderFil(); }
+  if (fil && fil.dataset.lignes !== "4"){ fil.dataset.lignes = 4; renderFil(); }
   if (trop()) t.classList.add('serre');    /* plus de place : on aligne en haut, jamais de coupe */
-  if (trop() && fil){ fil.dataset.lignes = 2; renderFil(); }   /* le fil rétrécit avant tout le reste */
-  if (trop() && fil){ fil.dataset.lignes = 1; renderFil(); }
   if (trop()) $('#dirWrap').style.display = 'none';
-  if (trop()) $('#histCol').style.display = 'none';
+  if (trop() && fil){ fil.dataset.lignes = 3; renderFil(); }   /* le fil ne cède qu'après le sens */
+  if (trop() && fil){ fil.dataset.lignes = 2; renderFil(); }
+  if (trop()) $('#histCol').style.display = 'none';            /* l'historique en tout dernier */
+  if (trop() && fil){ fil.dataset.lignes = 1; renderFil(); }   /* écran minuscule : une seule ligne */
   /* tout petit écran : la main se réduit un peu plutôt que de chevaucher la table */
   const hand = $('#hand'), manque = besoin() - t.clientHeight;
   if (manque > 0){

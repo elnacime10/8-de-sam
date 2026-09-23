@@ -6,16 +6,27 @@ function loadStats(){
   try { Object.assign(STATS, JSON.parse(localStorage.getItem('sam8_stats')) || {}); if (!STATS.vs) STATS.vs = {}; } catch(e){}
 }
 function saveStats(){ try{ localStorage.setItem('sam8_stats', JSON.stringify(STATS)); }catch(e){} }
-function noteResult(gagne){
+/* Le résultat d'un MATCH, pas d'une manche. Et face à face par face à face :
+   finir 2e sur 5 n'est pas une défaite, et on ne perd pas contre ceux
+   qu'on a devancés. */
+function noteResult(classement){
+  if (!Array.isArray(classement) || classement.indexOf(ME) < 0) return;
+  const maPlace = classement.indexOf(ME);
   STATS.p++;
-  if (gagne) STATS.w++; else STATS.l++;
-  seats().forEach(q => {
+  if (maPlace === 0) STATS.w++; else STATS.l++;
+  if (maPlace <= 2 && classement.length > 2) STATS.podium = (STATS.podium || 0) + 1;
+  classement.forEach((q, place) => {
     if (q === ME) return;
     const id = SG(q).char;
     if (!STATS.vs[id]) STATS.vs[id] = { w:0, l:0 };
-    gagne ? STATS.vs[id].w++ : STATS.vs[id].l++;
+    (maPlace < place) ? STATS.vs[id].w++ : STATS.vs[id].l++;   // fini devant / derrière
   });
   saveStats();
+}
+/* l'ordre d'arrivée du match : par points, les sortants d'abord en cas d'égalité */
+function classementMatch(){
+  if (MATCH.n === 2) return G && G.out.length ? G.out.slice(0, 2) : [];
+  return seats().slice().sort((a, b) => (SG(a).dq - SG(b).dq) || (SG(b).score - SG(a).score));
 }
 
 function refreshHome(){
