@@ -11,12 +11,13 @@ function noteResult(gagne){
   if (gagne) STATS.w++; else STATS.l++;
   seats().forEach(q => {
     if (q === ME) return;
-    const id = MATCH.chars[q];
+    const id = SG(q).char;
     if (!STATS.vs[id]) STATS.vs[id] = { w:0, l:0 };
     gagne ? STATS.vs[id].w++ : STATS.vs[id].l++;
   });
   saveStats();
 }
+
 function refreshHome(){
   $('#sW').textContent = STATS.w;
   $('#sL').textContent = STATS.l;
@@ -27,19 +28,12 @@ function refreshHome(){
     return `<div class="vsRow"><img src="${IMG[id]}" alt=""><span class="n">${CHARS[id].nom}</span>
       <span class="s">${v.w} – ${v.l}</span></div>`;
   }).join('');
-  const box = $('#homeSession');
-  if (!MATCH.matches){ box.innerHTML = ''; return; }
-  const ordre = seats().slice().sort((a, b) => MATCH.session[b] - MATCH.session[a]);
-  box.innerHTML = '<p class="sect">Soirée en cours</p>' + ordre.map((q, i) =>
-    `<div class="rank${q === ME ? ' me' : ''}"><span class="pos">${i+1}</span>
-     <span class="nm">${nameOf(q)}</span>
-     <span class="pt">${MATCH.session[q] > 0 ? '+' : ''}${MATCH.session[q]}</span></div>`).join('');
 }
 
 function saveMatch(){
   try {
     localStorage.setItem('sam8_match', JSON.stringify({
-      n:MATCH.n, levels:MATCH.levels, chars:MATCH.chars, world:MATCH.world, tours:MATCH.tours
+      n:MATCH.n, levels:champs('level'), chars:champs('char'), world:MATCH.world, tours:MATCH.tours
     }));
   } catch(e){}
 }
@@ -48,8 +42,8 @@ function loadMatch(){
     const m = JSON.parse(localStorage.getItem('sam8_match'));
     if (!m) return;
     if (m.n === 2 || m.n === 3) MATCH.n = m.n;
-    if (Array.isArray(m.levels) && m.levels.length === 3) MATCH.levels = m.levels;
-    if (Array.isArray(m.chars) && m.chars.length === 3 && m.chars.every(c => CHARS[c])) MATCH.chars = m.chars;
+    if (Array.isArray(m.levels)) m.levels.forEach((v, p) => { if (MATCH.seats[p]) MATCH.seats[p].level = v; });
+    if (Array.isArray(m.chars) && m.chars.every(c => CHARS[c])) m.chars.forEach((v, p) => { if (MATCH.seats[p]) MATCH.seats[p].char = v; });
     if (WORLDS[m.world]) MATCH.world = m.world;
     if ([1,3,5].includes(m.tours)) MATCH.tours = m.tours;
   } catch(e){}

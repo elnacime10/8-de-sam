@@ -31,8 +31,9 @@ async function doPlay(i, suit){
     busy = true; render(); setTimeout(() => { busy = false; render(); }, 400);
     return;
   }
-  busy = true;
   const c = G.hands[ME][i];
+  if (!c) return;                       /* main déjà retriée : on ignore un appui périmé */
+  busy = true;
   const from = rectOf(handEl(i)) || rectOf($('#drawSlot'));
   hideSuitBar();
   render();
@@ -91,18 +92,18 @@ $('#sortBtn').addEventListener('click', () => {
 /* --- écran d'accueil --- */
 function levelSegs(seat){
   return ['facile','moyen','difficile'].map(l =>
-    `<button class="seg${MATCH.levels[seat] === l ? ' on' : ''}" data-lv="${l}" data-seat="${seat}">${l.charAt(0).toUpperCase()+l.slice(1)}</button>`).join('');
+    `<button class="seg${SG(seat).level === l ? ' on' : ''}" data-lv="${l}" data-seat="${seat}">${l.charAt(0).toUpperCase()+l.slice(1)}</button>`).join('');
 }
 function faceButtons(container, seat){
   container.innerHTML = CHAR_IDS.map(id =>
-    `<button class="fbtn${MATCH.chars[seat] === id ? ' on' : ''}" data-id="${id}" data-seat="${seat}">
+    `<button class="fbtn${SG(seat).char === id ? ' on' : ''}" data-id="${id}" data-seat="${seat}">
        <img src="${IMG[id]}" alt=""><b>${CHARS[id].nom}</b></button>`).join('');
 }
 /* un personnage ne peut être pris qu'une fois : on échange avec celui qui l'avait */
 function pickChar(seat, id){
-  const used = MATCH.chars.findIndex((c, i) => c === id && i < MATCH.n);
-  if (used >= 0 && used !== seat) MATCH.chars[used] = MATCH.chars[seat];
-  MATCH.chars[seat] = id;
+  const used = champs('char').findIndex((c, i) => c === id && i < MATCH.n);
+  if (used >= 0 && used !== seat) SG(used).char = SG(seat).char;
+  SG(seat).char = id;
   refreshSetup();
 }
 
@@ -110,11 +111,11 @@ function renderSeats(){
   const box = $('#seatsBlock');
   let h = '';
   for (let p = 1; p < MATCH.n; p++){
-    const humain = MATCH.online && MATCH.human[p];
+    const humain = MATCH.online && SG(p).human;
     h += `<div class="seatCard" data-seat="${p}">
       <div class="seatHead">
-        <img src="${IMG[MATCH.chars[p]]}" alt="">
-        <div><div class="sn">${CHARS[MATCH.chars[p]].nom}</div>
+        <img src="${IMG[SG(p).char]}" alt="">
+        <div><div class="sn">${CHARS[SG(p).char].nom}</div>
         <div class="sd">Siège ${p + 1}</div></div>
         ${MATCH.online ? `<span class="free">${humain ? 'joueur' : 'ordinateur'}</span>` : ''}
       </div>
@@ -129,21 +130,10 @@ function renderSeats(){
     if (f) faceButtons(f, p);
   }
   box.querySelectorAll('.fbtn').forEach(b => b.addEventListener('click', () => pickChar(+b.dataset.seat, b.dataset.id)));
-  box.querySelectorAll('[data-lv]').forEach(b => b.addEventListener('click', () => { MATCH.levels[+b.dataset.seat] = b.dataset.lv; refreshSetup(); }));
-  box.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', () => { MATCH.human[+b.dataset.seat] = b.dataset.who === '1'; refreshSetup(); }));
+  box.querySelectorAll('[data-lv]').forEach(b => b.addEventListener('click', () => { SG(+b.dataset.seat).level = b.dataset.lv; refreshSetup(); }));
+  box.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', () => { SG(+b.dataset.seat).human = b.dataset.who === '1'; refreshSetup(); }));
 }
 
-function renderSession(){
-  const box = $('#sessionBlock');
-  if (!MATCH.matches){ box.style.display = 'none'; return; }
-  box.style.display = 'block';
-  const ordre = seats().slice().sort((a, b) => MATCH.session[b] - MATCH.session[a]);
-  $('#sessionList').innerHTML = ordre.map((p, i) =>
-    `<div class="rank${p === ME ? ' me' : ''}"><span class="pos">${i + 1}</span>
-     <span class="nm">${nameOf(p)}</span>
-     <span class="pt">${MATCH.session[p] > 0 ? '+' : ''}${MATCH.session[p]}</span></div>`).join('')
-    + `<p class="hint">${MATCH.matches} partie${MATCH.matches > 1 ? 's' : ''} jouée${MATCH.matches > 1 ? 's' : ''} ce soir.</p>`;
-}
 
 function refreshSetup(){
   $('#toursBlock').style.display = MATCH.n > 2 ? 'block' : 'none';
@@ -164,7 +154,6 @@ function refreshSetup(){
   faceButtons(f0, 0);
   f0.querySelectorAll('.fbtn').forEach(b => b.addEventListener('click', () => pickChar(0, b.dataset.id)));
   renderSeats();
-  renderSession();
   $('#playBtn').textContent = MATCH.online ? 'Ouvrir le salon' : 'Distribuer';
   $('#cfgTitle').textContent = MATCH.online ? 'Créer une partie' : 'Partie hors ligne';
   $('#cfgSub').textContent = MATCH.online
@@ -181,7 +170,6 @@ function show(id){
 
 $('#resetStats').addEventListener('click', () => {
   STATS.w = 0; STATS.l = 0; STATS.p = 0; STATS.vs = {};
-  MATCH.session = [0,0,0,0,0]; MATCH.matches = 0;
   saveStats(); refreshHome();
   $('#homeHint').textContent = 'Compteurs remis à zéro.';
 });
@@ -212,8 +200,8 @@ document.querySelectorAll('#nRow .seg').forEach(b => b.addEventListener('click',
   MATCH.n = +b.dataset.n;
   const vus = new Set();
   for (let p = 0; p < MATCH.n; p++){
-    while (vus.has(MATCH.chars[p])) MATCH.chars[p] = CHAR_IDS.find(c => !vus.has(c) && !MATCH.chars.slice(0, p).includes(c)) || MATCH.chars[p];
-    vus.add(MATCH.chars[p]);
+    while (vus.has(SG(p).char)) SG(p).char = CHAR_IDS.find(c => !vus.has(c) && !champs('char').slice(0, p).includes(c)) || SG(p).char;
+    vus.add(SG(p).char);
   }
   refreshSetup();
 }));
@@ -226,35 +214,31 @@ document.querySelectorAll('#toursRow .seg').forEach(b => b.addEventListener('cli
 document.querySelectorAll('#chronoRow .seg').forEach(b => b.addEventListener('click', () => {
   MATCH.chrono = +b.dataset.c; refreshSetup();
 }));
-$('#resetSession').addEventListener('click', () => {
-  MATCH.session = [0,0,0,0,0]; MATCH.matches = 0; refreshSetup();
+$('#resetSessionSupprime').addEventListener('click', () => {
+  refreshSetup();
 });
 
 $('#playBtn').addEventListener('click', () => {
-  MATCH.tour = 1; MATCH.scores = [0,0,0,0,0];
   if (MATCH.online){ openLobby(); return; }
-  MATCH.human = [true,false,false,false,false];
+  nouveauMatch('solo');          // un seul point de départ : plus rien ne traîne du match précédent
   shuffleSeats();
   startManche();
 });
 /* Tirage au sort des places : l'ordre autour de la table change à chaque partie. */
 /* Tirage au sort des places : idx[nouveau] = ancien siège */
 function shuffleSeats(){
+  /* on déplace les sièges entiers : aucun champ ne peut être oublié */
   const idx = seats();
   for (let i = idx.length - 1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [idx[i],idx[j]]=[idx[j],idx[i]]; }
-  const ch = idx.map(i => MATCH.chars[i]), lv = idx.map(i => MATCH.levels[i]), hu = idx.map(i => MATCH.human[i]);
-  const nm = idx.map(i => MATCH.names[i]), sc = idx.map(i => MATCH.session[i]), rd = idx.map(i => MATCH.ready[i]);
-  const tk = idx.map(i => MATCH.tok[i]), dq = idx.map(i => MATCH.dq[i]);
   const vers = [];                                   // ancien -> nouveau
   idx.forEach((anc, nouv) => { vers[anc] = nouv; });
-  for (let i = 0; i < idx.length; i++){
-    MATCH.chars[i]=ch[i]; MATCH.levels[i]=lv[i]; MATCH.human[i]=hu[i];
-    MATCH.names[i]=nm[i]; MATCH.session[i]=sc[i]; MATCH.ready[i]=rd[i];
-    MATCH.tok[i]=tk[i]; MATCH.dq[i]=dq[i];
-  }
+  const copie = idx.map(anc => MATCH.seats[anc]);
+  copie.forEach((s, i) => { MATCH.seats[i] = s; });
   conns.forEach(c => { if (c.seat !== undefined) c.seat = vers[c.seat]; });
   ME = vers[ME];
+  verifieSieges();
 }
+
 $('#againBtn').addEventListener('click', () => {
   if (MATCH.online){ netReadyClick(); return; }
   $('#endScreen').classList.add('hidden');
@@ -360,12 +344,10 @@ function endManche(){
   stopChrono();
   if (MATCH.n > 2){
     const pts = pointsFor(activeN());
-    G.out.forEach((p, i) => { MATCH.scores[p] += (pts[i] !== undefined ? pts[i] : 0); });
+    G.out.forEach((p, i) => { SG(p).score += (pts[i] !== undefined ? pts[i] : 0); });
   }
   noteResult(G.out[0] === ME);
   if (MATCH.n > 2 && MATCH.tour >= MATCH.tours){
-    seats().forEach(p => { MATCH.session[p] += MATCH.scores[p]; });
-    MATCH.matches++;
   }
   if (MATCH.online && MATCH.host) broadcastState();
   SFX.end();
@@ -394,16 +376,16 @@ function showEnd(){
         + ' : ' + (monGain === 0 ? 'aucun point' : sgn(monGain) + ' point' + (Math.abs(monGain) > 1 ? 's' : '')) + '.';
     const pts = bar.map(sgn);
     const classement = fin
-      ? seats().slice().sort((a,b) => (MATCH.dq[a] - MATCH.dq[b]) || (MATCH.scores[b] - MATCH.scores[a]))
+      ? seats().slice().sort((a,b) => (SG(a).dq - SG(b).dq) || (SG(b).score - SG(a).score))
       : G.out;
     $('#rankList').innerHTML = classement.map((p, i) =>
       `<div class="rank${p === ME ? ' me' : ''}"><span class="pos">${i+1}</span>
        <span class="nm">${nameOf(p)}</span>
-       <span class="pt">${fin ? (MATCH.scores[p] > 0 ? '+' : '') + MATCH.scores[p] : pts[i]}</span>
-       ${fin ? '' : `<span class="tot">total ${MATCH.scores[p] > 0 ? '+' : ''}${MATCH.scores[p]}</span>`}</div>`).join('');
+       <span class="pt">${fin ? (SG(p).score > 0 ? '+' : '') + SG(p).score : pts[i]}</span>
+       ${fin ? '' : `<span class="tot">total ${SG(p).score > 0 ? '+' : ''}${SG(p).score}</span>`}</div>`).join('');
     if (fin){
-      const top = Math.max(...MATCH.scores.slice(0, MATCH.n));
-      const exaequo = seats().filter(p => MATCH.scores[p] === top);
+      const top = Math.max(...champs('score').slice(0, MATCH.n));
+      const exaequo = seats().filter(p => SG(p).score === top);
       if (exaequo.length > 1){
         $('#endSub').textContent = 'Égalité à ' + (top > 0 ? '+' : '') + top + ' — un tour de départage.';
         $('#againBtn').textContent = 'Tour de départage';
@@ -415,7 +397,7 @@ function showEnd(){
   }
   const champ = MATCH.n === 2 ? G.out[0]
     : (MATCH.tour >= MATCH.tours && !$('#againBtn').textContent.includes('départage')
-       ? seats().slice().sort((a,b) => (MATCH.dq[a] - MATCH.dq[b]) || (MATCH.scores[b] - MATCH.scores[a]))[0] : G.out[0]);
+       ? seats().slice().sort((a,b) => (SG(a).dq - SG(b).dq) || (SG(b).score - SG(a).score))[0] : G.out[0]);
   if (champ === undefined || champ === null){ $('#winBox').style.display = 'none'; }
   else {
   $('#winBox').style.display = 'flex';
@@ -440,7 +422,7 @@ function showEnd(){
   $('#readyInfo').innerHTML = '';
   $('#backBtn').textContent = MATCH.online ? 'Quitter la session' : 'Quitter';
   $('#endScreen').classList.remove('hidden');
-   if (MATCH.online) netEndScreen();          // en ligne : système de prêt / revanche
+  if (MATCH.online) netEndScreen();          // en ligne : système de prêt / revanche
 }
 
 function nextStep(){
@@ -448,11 +430,11 @@ function nextStep(){
   if (MATCH.n > 2){
     const fin = MATCH.tour >= MATCH.tours;
     if (fin){
-      const top = Math.max(...MATCH.scores.slice(0, MATCH.n));
-      const exaequo = seats().filter(p => MATCH.scores[p] === top);
+      const top = Math.max(...champs('score').slice(0, MATCH.n));
+      const exaequo = seats().filter(p => SG(p).score === top);
       if (exaequo.length > 1){ MATCH.tours++; MATCH.tour++; startManche(); return; }
       if (MATCH.online) return;                  // en ligne, la suite passe par la revanche
-      MATCH.tour = 1; MATCH.scores = [0,0,0,0,0];
+      MATCH.tour = 1; MATCH.seats.forEach(s => s.score = 0);
       $('#startScreen').classList.remove('hidden');
       refreshSetup();
       return;

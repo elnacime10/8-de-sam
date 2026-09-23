@@ -13,26 +13,58 @@ const RANKS = ['2','3','4','5','6','7','8','9','10','V','D','R','A'];
 const isRed = s => s === 'H' || s === 'D';
 let ME = 0;                       // mon siège (0 en local, variable en ligne)
 
+/* ---------------------------------------------------------------
+   UN SIÈGE = UN OBJET. Tout ce qui concerne un joueur vit au même
+   endroit : impossible que deux informations se désynchronisent.
+   --------------------------------------------------------------- */
+const CHAMPS_SIEGE = ['char','level','human','name','ready','conn','score','tok','dq'];
+const siegeNeuf = (char, level) => ({ char, level, human:false, name:'', ready:false,
+                                      conn:false, score:0, tok:'', dq:false });
 const MATCH = {
   n:2,
-  levels : ['difficile','difficile','moyen','moyen','facile'],
-  chars  : ['nacime','sam','mehmet','hamza','yuns'],
-  human  : [true,false,false,false,false],
-  names  : ['','','','',''],          // pseudo réseau, vide = nom du personnage
-  ready  : [true,false,false,false,false],
-  conn   : [false,false,false,false,false],   // vu par l'invité
+  seats: [
+    siegeNeuf('nacime','difficile'), siegeNeuf('sam','difficile'), siegeNeuf('mehmet','moyen'),
+    siegeNeuf('hamza','moyen'),      siegeNeuf('yuns','facile')
+  ],
   world:'quartier', tours:1, tour:1,
-  scores  : [0,0,0,0,0],              // points du match en cours
-  session : [0,0,0,0,0],              // cumul de la soirée
-  matches : 0,
   chrono:0,                           // 0 = illimité, sinon secondes
   online:false, host:false, code:'',
-  nextChooser:undefined,
-  dq  : [false,false,false,false,false],   // disqualifiés : ne jouent plus jusqu'à la fin du match
-  tok : ['','','','','']                    // jeton de reconnexion (hôte seulement)
+  nextChooser:undefined
 };
+const SG = p => MATCH.seats[p] || siegeNeuf('sam','moyen');     // le siège p
+const champs = k => MATCH.seats.map(s => s[k]);                 // la colonne k, pour l'affichage ou le réseau
+
+/* Le seul endroit qui construit un match. Tous les départs passent par ici. */
+function nouveauMatch(mode){                 // 'solo' | 'hote'
+  MATCH.seats.forEach((s, p) => {
+    s.human = false; s.name = ''; s.ready = false; s.conn = false;
+    s.score = 0; s.tok = ''; s.dq = false;
+  });
+  ME = 0;
+  SG(0).human = true; SG(0).ready = true; SG(0).conn = true;
+  MATCH.tour = 1;
+  MATCH.online = (mode === 'hote');
+  MATCH.host   = (mode === 'hote');
+  if (mode === 'solo') MATCH.code = '';
+}
+
+/* Vérifie avant chaque manche que l'état est cohérent. Répare et signale. */
+function verifieSieges(){
+  const soucis = [];
+  if (!(MATCH.n >= 2 && MATCH.n <= 5)){ soucis.push('n=' + MATCH.n); MATCH.n = Math.min(5, Math.max(2, MATCH.n | 0)); }
+  if (!(ME >= 0 && ME < MATCH.n)){ soucis.push('siège ' + ME + ' hors table'); ME = 0; }
+  if (!MATCH.online){
+    /* hors ligne : un seul humain, et c'est moi. C'était la cause des blocages. */
+    MATCH.seats.forEach((s, p) => {
+      if (s.human !== (p === ME)){ soucis.push('humain[' + p + ']'); s.human = (p === ME); }
+      if (s.dq){ soucis.push('dq[' + p + ']'); s.dq = false; }
+    });
+  } else if (MATCH.host && !SG(ME).human){ soucis.push('hôte non humain'); SG(ME).human = true; }
+  if (soucis.length && typeof note === 'function') note('SIEGES RÉPARÉS', { soucis:soucis.join(' ') });
+  return soucis;
+}
 /* nombre de joueurs encore dans le match */
-function activeN(){ return seats().filter(p => !MATCH.dq[p]).length; }
+function activeN(){ return seats().filter(p => !SG(p).dq).length; }
 /* 8 cartes jusqu'à 3 joueurs, une de moins par joueur au-delà */
 function handSize(n){ return n <= 3 ? 8 : (n === 4 ? 7 : 6); }
 /* barème symétrique : à 4 -> +2 +1 -1 -2 ; à 5 -> +2 +1 0 -1 -2 */
@@ -41,7 +73,7 @@ function pointsFor(n){
   for (let v = k; v >= -k; v--){ if (v === 0 && n % 2 === 0) continue; out.push(v); }
   return out;
 }
-const isAI = p => !MATCH.human[p];
+const isAI = p => !SG(p).human;
 let G = null, sortMode = 'suit', selected = -1, busy = false, pending8 = -1, skipAll = false;
 
 
@@ -67,6 +99,7 @@ function nextSeat(p){
 const duel = () => countIn() <= 2;
 
 function newManche(){
+  verifieSieges();                      // jamais de manche sur un état incohérent
   G = {
     deck:newDeck(), discard:[], hands:[], top:null, activeSuit:null, freeStart:false,
     dir:1, in:[], out:[], turn:ME, pending:null, pendingWinner:null, openingExtra:null,
@@ -74,7 +107,7 @@ function newManche(){
     turnCount:0, minHand:99, totalHands:0, stagnant:0, reshuffles:0,
     weak:[], playedRanks:{}, hist:[], moveNo:0, seq:0, actNo:0, lastAct:null
   };
-  for (const p of seats()){ G.hands[p] = []; G.in[p] = !MATCH.dq[p]; G.weak[p] = {H:0,S:0,C:0,D:0}; }
+  for (const p of seats()){ G.hands[p] = []; G.in[p] = !SG(p).dq; G.weak[p] = {H:0,S:0,C:0,D:0}; }
   G.mid = Date.now() + Math.random();         // identifiant unique de la manche
   const nc = handSize(activeN());
   for (let i = 0; i < nc; i++) for (const p of seats()) if (G.in[p]) G.hands[p].push(G.deck.pop());
@@ -120,6 +153,10 @@ function forbiddenFinish(r){ return duel() ? isChain(r) : r === '10'; }
 function replayCard(r){ return duel() ? isChain(r) : r === '10'; }
 
 function playCard(p, idx, suitChoice){
+  if (!G.hands[p] || !G.hands[p][idx]){                 /* index périmé : on ignore au lieu de casser la partie */
+    if (typeof note === 'function') note('CARTE ABSENTE', { p, idx });
+    return;
+  }
   const c = G.hands[p].splice(idx, 1)[0];
   G.actNo++; G.lastAct = { n:G.actNo, p, k:'play', r:c.r, s:c.s };
   G.discard.push(c);

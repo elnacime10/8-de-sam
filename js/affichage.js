@@ -53,7 +53,7 @@ let flashT = null, lastDir = null;
 let lastBubbleMove = -9, lastBubbleWho = -1;
 
 function lineFor(p, kind){
-  const set = LINES[MATCH.chars[p]];
+  const set = LINES[SG(p).char];
   if (!set || !set[kind] || !set[kind].length) return null;
   const l = set[kind][Math.floor(Math.random() * set[kind].length)];
   return SET.trash ? l.t : l.c;
@@ -161,8 +161,8 @@ function renderOpps(){
               : derniere ? '<span class="tagS lastT">DERNIÈRE CARTE</span>'
               : mine ? '<span class="tagS turnT">IL JOUE</span>' : '';
     const nb = G.hands[p].length;
-    const niveau = MATCH.human[p] ? 'joueur' : MATCH.levels[p];
-    const score = MATCH.n > 2 ? ' · <b>' + (MATCH.scores[p] > 0 ? '+' : '') + MATCH.scores[p] + '</b>' : '';
+    const niveau = SG(p).human ? 'joueur' : SG(p).level;
+    const score = MATCH.n > 2 ? ' · <b>' + (SG(p).score > 0 ? '+' : '') + SG(p).score + '</b>' : '';
     seat.innerHTML = `
       <div class="opp${mine ? ' turn' : ''}${aim ? ' aim' : ''}">
         ${tag}
@@ -187,7 +187,7 @@ function render(){
   $('#matchTitle').textContent = (MATCH.n === 2 ? 'Face à face' : 'Partie à ' + MATCH.n)
     + (MATCH.online ? ' · en ligne' : '');
   $('#matchSub').textContent = MATCH.n > 2
-    ? `Tour ${MATCH.tour}/${MATCH.tours} · toi ${MATCH.scores[ME] > 0 ? '+' : ''}${MATCH.scores[ME]}`
+    ? `Tour ${MATCH.tour}/${MATCH.tours} · toi ${SG(ME).score > 0 ? '+' : ''}${SG(ME).score}`
     : 'Manche sèche';
   const wd = WORLDS[MATCH.world] || WORLDS.quartier;
   $('#bgImg').style.backgroundImage = 'url(' + IMG[MATCH.world] + ')';

@@ -44,7 +44,9 @@ async function dealAnim(){
   await sleep(S(220));
 }
 
+let EN_SEQUENCE = false;
 async function startManche(){
+  EN_SEQUENCE = true;
   if (MATCH.online && !MATCH.host) return;      // seul l'hôte distribue
   stopChrono();
   busy = true; pending8 = -1;
@@ -63,6 +65,7 @@ async function startManche(){
   busy = false;
   render();
   setTimeout(() => { openManche(); armChrono(); }, S(220));
+  EN_SEQUENCE = false;
 }
 
 function preload(){
@@ -111,7 +114,7 @@ refreshSet();
 refreshSetup();
 
 /* ---- Numéro de version : sur l'accueil et dans la pause ---- */
-const VERSION_JEU = '1.9';
+const VERSION_JEU = '2.0';
 $('#versionHome').textContent = 'Version ' + VERSION_JEU;
 $('#versionMenu').textContent = 'Version ' + VERSION_JEU;
 
@@ -163,15 +166,17 @@ setInterval(() => {
       return;
     }
     immobile++;
+    if (EN_SEQUENCE){ immobile = 0; return; }          /* distribution ou présentation en cours */
     const attenteIA = G.turn !== ME && isAI(G.turn) && G.in[G.turn] && (!MATCH.online || MATCH.host);
-    if (attenteIA && immobile >= 5){
-      note('BLOCAGE', { tour:G.turn, busy, skipAll, humains:MATCH.human.slice(0, MATCH.n).join(','),
+    if (attenteIA && immobile >= 6){
+      note('BLOCAGE', { tour:G.turn, busy, skipAll, humains:champs('human').slice(0, MATCH.n).join(','),
         enJeu:G.in.slice(0, MATCH.n).join(','), mains:G.hands.map(h => h.length).join('/'),
         pioche:G.deck.length, defausse:G.discard.length,
         attaque:G.pending ? (G.pending.type + '+' + G.pending.amount + '→' + G.pending.target) : '—',
         top:G.top ? (G.top.r + G.top.s) : '—', couleur:G.activeSuit, actNo:G.actNo });
       immobile = 0; relances++;
-      busy = false;                       /* on lève le verrou s'il était resté fermé */
+      GEN_IA++;                           /* toute boucle figée s'arrête à son prochain tour */
+      busy = false;
       flash('Adversaire relancé', true);
       runAI();
     }
@@ -180,10 +185,14 @@ setInterval(() => {
 
 function rapport(){
   return JSON.stringify({
-    version: VERSION_JEU, quand: new Date().toISOString(), relances,
+    version: VERSION_JEU, protocole: (typeof VERSION_PROTO !== 'undefined' ? VERSION_PROTO : '?'),
+    quand: new Date().toISOString(), relances,
+    minuteries: (typeof minuteriesVivantes === 'function' ? minuteriesVivantes() : []),
+    fichiers: { reseau: typeof texteRevanche === 'function', moteur: typeof verifieSieges === 'function',
+                affichage: typeof ajusteTable === 'function', ecrans: typeof shuffleSeats === 'function' },
     ecran: (window.innerWidth || 0) + 'x' + (window.innerHeight || 0),
     match: G ? { n:MATCH.n, enLigne:MATCH.online, hote:MATCH.host, moi:ME, tour:MATCH.tour + '/' + MATCH.tours,
-                 humains:MATCH.human.slice(0, MATCH.n), niveaux:MATCH.levels.slice(0, MATCH.n),
+                 humains:champs('human').slice(0, MATCH.n), niveaux:champs('level').slice(0, MATCH.n),
                  vitesse:SET.speed } : null,
     etat: G ? { tour:G.turn, finie:G.over, busy, skipAll, enJeu:G.in.slice(0, MATCH.n),
                 mains:G.hands.map(h => h.length), pioche:G.deck.length, defausse:G.discard.length,
@@ -191,14 +200,14 @@ function rapport(){
     journal: JOURNAL.slice(-70)
   }, null, 1);
 }
-$('#diagBtn').addEventListener('click', async () => {
+document.querySelectorAll('.diagBtn').forEach(b => b.addEventListener('click', async () => {
   const txt = rapport();
   $('#diagTxt').value = txt;
   let copie = false;
   try { await navigator.clipboard.writeText(txt); copie = true; } catch(e){}
   if (copie){ flash('Rapport copié — colle-le dans la conversation', true); }
   else { $('#menuScreen').classList.add('hidden'); $('#diagScreen').classList.remove('hidden'); }
-});
+}));
 $('#diagCopy').addEventListener('click', () => {
   const t = $('#diagTxt'); t.focus(); t.select();
   try { document.execCommand('copy'); flash('Rapport copié', true); } catch(e){}

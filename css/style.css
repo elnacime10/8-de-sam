@@ -38,18 +38,7 @@ button:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
 #bgImg{ position:absolute; inset:0; background-size:cover; background-position:center var(--bgY,42%); }
 #bgShade{ position:absolute; inset:0;
   background:linear-gradient(180deg, rgba(10,8,16,.50) 0%, rgba(10,8,16,.06) 20%, rgba(10,8,16,.10) 52%, rgba(10,8,16,.62) 88%, rgba(10,8,16,.80) 100%); }
-#sky{ position:absolute; left:0; right:0; top:0; height:42%;
-  background:linear-gradient(180deg,var(--sky-1) 0%,var(--sky-2) 38%,var(--sky-3) 74%,var(--sky-4) 100%); }
 #city{ position:absolute; left:0; right:0; top:10%; height:32%; width:100%; display:block; }
-#wall{
-  position:absolute; left:0; right:0; top:42%; bottom:0; background-color:var(--wall-2);
-  background-image:
-    repeating-linear-gradient(90deg, rgba(0,0,0,.20) 0 3px, rgba(0,0,0,0) 3px 104px),
-    repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 3px, rgba(0,0,0,0) 3px 52px),
-    radial-gradient(90% 70% at 4% -5%, rgba(255,206,140,.50), rgba(255,206,140,0) 65%),
-    radial-gradient(60% 40% at 96% 105%, rgba(70,110,60,.30), rgba(70,110,60,0) 70%),
-    linear-gradient(180deg, var(--wall-1) 0%, var(--wall-2) 48%, var(--wall-3) 100%);
-}
 #cap{ position:absolute; left:0; right:0; top:42%; height:16px; margin-top:-16px;
   background:linear-gradient(180deg,var(--wall-cap) 0%,#93866F 100%); box-shadow:0 6px 14px rgba(0,0,0,.45); }
 #cap::after{ content:""; position:absolute; left:0; right:0; top:0; height:3px;
