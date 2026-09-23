@@ -659,3 +659,6 @@ table.rt td.s{ width:38px; }
 
 /* ---- les cartes de la main glissent au lieu de sauter ---- */
 #hand .card{ will-change:transform; }
+
+/* la carte du dessus est masquée pendant qu'une carte vole vers la défausse */
+#discardSlot.enVol > .card:last-child{ visibility:hidden; }

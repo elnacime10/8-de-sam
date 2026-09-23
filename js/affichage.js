@@ -70,6 +70,28 @@ async function flyCards(cards, to, faceUp){
   }
   await sleep(Math.max(0, S(CONFIG.flyMs) - S(160)) + (faceUp ? S(CONFIG.drawHoldMs) : 0));
 }
+/* Anime un coup qui n'a pas été joué sur cet appareil (coup d'un joueur
+   distant, chez l'hôte comme chez l'invité). La carte est déjà sur la
+   défausse quand on arrive ici : on la masque le temps du vol. */
+function anime(a, son){
+  if (!a || skipAll || MOUVEMENT_REDUIT || VOLS.size > 2) return false;
+  const depuis = oppStackEl(a.p);
+  if (a.k === 'play'){
+    const ds = $('#discardSlot');
+    ds.classList.add('enVol');
+    fly(depuis, ds, cardHTML({ r:a.r, s:a.s }), false, () => { ds.classList.remove('enVol'); if (son) son(); })
+      .then(() => ds.classList.remove('enVol'));
+    return true;
+  }
+  if (a.k === 'draw' || a.k === 'take'){
+    const n = Math.min(a.amt || 1, 5);
+    for (let i = 0; i < n; i++)
+      setTimeout(() => fly($('#drawSlot'), depuis, '<div class="cardback" style="width:100%;height:100%"></div>',
+        false, i === 0 && son ? son : null), i * S(150));
+    return true;
+  }
+  return false;
+}
 const handEl = i => document.querySelector(`#hand .card[data-i="${i}"]`);
 const oppStackEl = p => document.querySelector(`.seat[data-p="${p}"] .opp`) || $('#drawSlot');
 
@@ -131,8 +153,11 @@ function renderFil(){
   }).join('');
 }
 /* les répliques des personnages passent par le fil */
+/* Seul l'hôte (ou le jeu hors ligne) choisit une réplique. Elle part ensuite
+   avec l'état, pour que tout le monde lise exactement la même chose. */
 function bubble(p, kind, force){
   if (!G || skipAll) return;
+  if (MATCH.online && !MATCH.host) return;          // l'invité ne décide de rien
   if (G.over && kind !== 'out' && kind !== 'lose') return;
   const majeur = force || kind === 'out' || kind === 'lose';
   if (!majeur){
@@ -141,7 +166,7 @@ function bubble(p, kind, force){
   }
   const txt = lineFor(p, kind);
   if (!txt) return;
-  filAjoute(p, txt, 'dit', HUMEUR[kind] || '');
+  journal(p, txt, 'dit', HUMEUR[kind] || '');
 }
 function flash(txt, hot){
   const el = $('#flash');
@@ -384,28 +409,32 @@ const tire = pr => Math.random() < pr * DUEL_BONUS();
 
 /* Le fil raconte ce qu'on ne peut pas deviner, et les personnages réagissent. */
 function renderAct(){
+  if (MATCH.online && !MATCH.host) return;      /* l'invité lit le journal, il ne l'écrit pas */
   const a = G && G.lastAct;
   if (!a || a.n === lastActShown) return;
   const premier = lastActShown === 0;
   lastActShown = a.n;
   rechargeParole();
 
-  /* 1. ce qu'on mange */
+  /* 1. ce qu'on mange, ce qu'on pioche */
   if (a.k === 'take'){
     const n = a.amt || 1;
-    if (a.typ === '9'){ filAjoute(a.p, 'mange un <b>9</b>', 'coup', 'enerve');
+    if (a.typ === '9'){ journal(a.p, 'mange un <b>9</b>', 'coup', 'enerve');
       if (tire(0.5)) bubble(a.p, 'hit'); }
-    else if (a.typ === 'A'){ filAjoute(a.p, n <= 2 ? 'mange un <b>As</b>' : 'mange <b>' + (n/2) + ' As</b>', 'coup', 'enerve');
+    else if (a.typ === 'A'){ journal(a.p, n <= 2 ? 'mange un <b>As</b>' : 'mange <b>' + (n/2) + ' As</b>', 'coup', 'enerve');
       if (tire(n > 2 ? 0.9 : 0.6)) bubble(a.p, 'hit'); }
+    else journal(a.p, 'pioche', 'coup', '');
   }
+  if (a.k === 'draw') journal(a.p, 'pioche', 'coup', '');
 
   /* 2. ce qu'on pose */
   if (a.k === 'play'){
     const contre = a.amt && a.amt > 2;
+    if (a.suit){ SFX.suit(); journal(a.p, 'demande <b class="' + (isRed(a.suit) ? 'r' : '') + '">' + SUIT_CHAR[a.suit] + ' ' + SUIT_NAME[a.suit] + '</b>', 'coup', 'malin'); }
     if (a.r === 'A'){ if (tire(contre ? 0.9 : 0.55)) bubble(a.p, 'atk'); }
     else if (a.r === '9'){ if (tire(0.35)) bubble(a.p, 'atk'); }
     else if (a.skip !== undefined){ if (tire(0.3)) bubble(a.p, 'atk'); }
-    if ((CHAINE[a.p] || 0) >= 3) bubble(a.p, 'atk', true);        /* un enchaînement, ça se fête */
+    if ((CHAINE[a.p] || 0) >= 3){ SFX.combo(); bubble(a.p, 'atk', true); }   /* un enchaînement, ça se fête */
   }
 
   /* 3. l'annonce : tout le monde annonce sa dernière carte, comme dans la vraie vie */
@@ -414,7 +443,8 @@ function renderAct(){
     const n = G.hands[p].length;
     if (n === 1 && ANNONCE[p] !== G.mid){
       ANNONCE[p] = G.mid;
-      filAjoute(p, '<b>Carte !</b>', 'coup', 'malin', 3);
+      journal(p, '<b>Carte !</b>', 'coup', 'malin', 3);
+      SFX.last();
       seats().forEach(q => { if (q !== p && G.in[q] && tire(0.35)) bubble(q, 'low'); });
     }
     if (n > 1) ANNONCE[p] = null;

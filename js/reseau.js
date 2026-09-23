@@ -47,7 +47,7 @@ function closeNet(msg, prevenir){
   if (peer){ try{ peer.destroy(); }catch(e){} peer = null; }
   MATCH.online = false; MATCH.host = false; MATCH.code = '';
   MATCH.seats.forEach(s => { s.conn = false; });
-  NET.state = 'off'; lastSeq = 0; lastActSeen = 0; SEQ = 0;
+  NET.state = 'off'; lastSeq = 0; lastActSeen = 0; SEQ = 0; jrnVu = 0; midVu = null;
   ME = 0;
   netBar(msg || '', true);
   if (msg) setTimeout(() => netBar(''), 6000);
@@ -232,7 +232,8 @@ function viewFor(seat){
     hands:G.hands, top:G.top, activeSuit:G.activeSuit, freeStart:G.freeStart, dir:G.dir,
     in:G.in, out:G.out, turn:G.turn, pending:G.pending, pendingWinner:G.pendingWinner,
     over:G.over, deckN:G.deck.length, hist:G.hist, moveNo:G.moveNo, winner:G.winner,
-    seq:G.seq, actNo:G.actNo, lastAct:G.lastAct, mid:G.mid
+    seq:G.seq, actNo:G.actNo, lastAct:G.lastAct, mid:G.mid,
+    jrn:(G.jrn || []).slice(-10), chain:CHAINE.slice()
   }));
   if (!G.over) g.hands = g.hands.map((h, p) => p === seat ? h : h.map(() => ({ r:'?', s:'?' })));
   return g;
@@ -297,7 +298,13 @@ function applyRemote(seat, d){
     if (!playable(G.hands[seat][i])) return;
     playCard(seat, i, d.suit);
   }
-  render(); broadcastState();
+  render();
+  /* le coup vient du réseau : on l'anime comme s'il était joué ici */
+  anime(G.lastAct, () => {
+    if (G.lastAct.k === 'play') (G.lastAct.r === 'A' || G.lastAct.r === '9') ? SFX.atk(G.pending ? G.pending.amount : 2) : SFX.play();
+    else SFX.draw();
+  });
+  broadcastState();
   if (!G.over && G.turn !== ME && isAI(G.turn)) runAI(); else armChrono();
 }
 
@@ -354,6 +361,8 @@ function onGuestData(d){
     const avant = G;
     const monTour = G && G.turn === ME;
     GPHASE = d.phase || null;
+    if (Array.isArray(d.g.chain)) CHAINE = d.g.chain.slice();   /* le compteur vient de l'hôte */
+    if (g.mid && g.mid !== midVu){ midVu = g.mid; jrnVu = 0; filVide(); }   /* nouvelle manche : on repart à blanc */
     G = Object.assign({}, g, { deck:new Array(g.deckN).fill(0), discard:G ? G.discard : [],
       weak:[{},{},{},{},{}], playedRanks:{}, turnCount:0, stagnant:0, reshuffles:0, minHand:99, totalHands:0 });
     if (G.top) G.discard = [G.top];
@@ -364,6 +373,8 @@ function onGuestData(d){
     if (g.over && g.mid && g.mid !== countedMid && (MATCH.n === 2 || MATCH.tour >= MATCH.tours)){
       countedMid = g.mid; noteResult(classementMatch());
     }
+    /* le journal de l'hôte : on affiche les lignes qu'on n'a pas encore vues, dans l'ordre */
+    (g.jrn || []).forEach(e => { if (e.n > jrnVu){ jrnVu = e.n; filAjoute(e.p, e.t, e.g, e.h); } });
     sizeUp(); render();
     guestFeedback(g, monTour);
     guestChrono(d.chrono);
@@ -374,17 +385,20 @@ function onGuestData(d){
   }
 }
 
-let lastSeq = 0, lastActSeen = 0, guestT = null;
+let lastSeq = 0, lastActSeen = 0, guestT = null, jrnVu = 0, midVu = null;
 /* l'invité ne reçoit qu'un état : il en déduit ce qui vient de se passer */
 function guestFeedback(g, monTourAvant){
   const a = g.lastAct;
   if (a && a.n > lastActSeen){
     lastActSeen = a.n;
-    if (a.k === 'play'){
-      (a.r === 'A' || a.r === '9') ? SFX.atk(g.pending ? g.pending.amount : 2) : SFX.play();
-      if (a.p !== ME){
-      }
-    } else SFX.draw();
+    const son = () => {
+      if (a.k === 'play') (a.r === 'A' || a.r === '9') ? SFX.atk(g.pending ? g.pending.amount : 2) : SFX.play();
+      else SFX.draw();
+    };
+    /* le coup d'un autre joueur s'anime ici comme s'il était joué sur place */
+    if (a.p !== ME && anime(a, son)) { /* le son tombera à l'impact */ }
+    else son();
+
   }
   if (G.turn === ME && !monTourAvant && !G.over) SFX.mine();
 }

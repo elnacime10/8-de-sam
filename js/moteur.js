@@ -32,6 +32,17 @@ const MATCH = {
   nextChooser:undefined
 };
 let CHAINE = [0,0,0,0,0];        // observation seule : ne change aucune règle
+
+/* Tout ce qui s'affiche passe par ici : coups racontés, annonces, répliques.
+   Chaque ligne est numérotée et voyage dans l'état, donc l'invité voit
+   exactement la même chose, dans le même ordre, sans rien rater ni inventer. */
+function journal(p, texte, genre, humeur, priorite){
+  if (!G) return;
+  G.jrnN = (G.jrnN || 0) + 1;
+  (G.jrn = G.jrn || []).push({ n:G.jrnN, p, t:texte, g:genre || 'coup', h:humeur || '' });
+  if (G.jrn.length > 14) G.jrn.shift();
+  filAjoute(p, texte, genre, humeur, priorite);
+}
 const SG = p => MATCH.seats[p] || siegeNeuf('sam','moyen');     // le siège p
 const champs = k => MATCH.seats.map(s => s[k]);                 // la colonne k, pour l'affichage ou le réseau
 
@@ -101,13 +112,14 @@ const duel = () => countIn() <= 2;
 
 function newManche(){
   verifieSieges();
-  CHAINE = [0,0,0,0,0];            // cartes posées d'affilée, par joueur                      // jamais de manche sur un état incohérent
+  CHAINE = [0,0,0,0,0];            // cartes posées d'affilée, par joueur
   G = {
     deck:newDeck(), discard:[], hands:[], top:null, activeSuit:null, freeStart:false,
     dir:1, in:[], out:[], turn:ME, pending:null, pendingWinner:null, openingExtra:null,
     over:false, fast:false, autoAll:false,
     turnCount:0, minHand:99, totalHands:0, stagnant:0, reshuffles:0,
-    weak:[], playedRanks:{}, hist:[], moveNo:0, seq:0, actNo:0, lastAct:null
+    weak:[], playedRanks:{}, hist:[], moveNo:0, seq:0, actNo:0, lastAct:null,
+    jrn:[], jrnN:0                 // le journal partagé : tout ce qui s'écrit à l'écran
   };
   for (const p of seats()){ G.hands[p] = []; G.in[p] = !SG(p).dq; G.weak[p] = {H:0,S:0,C:0,D:0}; }
   G.mid = Date.now() + Math.random();         // identifiant unique de la manche
@@ -257,7 +269,8 @@ function goOut(p){
     return;
   }
   SFX.out();
-  if (MATCH.n > 2) filAjoute(p, 'est <b>' + G.out.length + (G.out.length === 1 ? 'er' : 'e') + '</b>', 'coup', 'content', 3);
+  if (MATCH.n > 2) journal(p, 'est <b>' + G.out.length + (G.out.length === 1 ? 'er' : 'e') + '</b>', 'coup', 'content', 3);
+  SFX.out();
   bubble(p, G.out.length === 1 ? 'out' : 'lose', true);
 
 }

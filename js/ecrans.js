@@ -26,9 +26,14 @@ async function doPlay(i, suit){
   if (busy) return;
   if (MATCH.online && !MATCH.host){          // invité : on transmet, l'hôte tranche
     const c = G.hands[ME][i];
-    SFX.play(); sendMove({ a:'play', r:c.r, s:c.s, suit });
+    if (!c) return;
+    const dep = rectOf(handEl(i)) || rectOf($('#drawSlot'));
+    sendMove({ a:'play', r:c.r, s:c.s, suit });
     hideSuitBar(); selected = -1;
-    busy = true; render(); setTimeout(() => { busy = false; render(); }, 400);
+    busy = true; render();
+    /* la carte part de sa main comme hors ligne : même geste, même son */
+    fly(dep, $('#discardSlot'), cardHTML(c), false, () => SFX.play());
+    setTimeout(() => { busy = false; render(); }, Math.max(400, S(CONFIG.flyMs)));
     return;
   }
   const c = G.hands[ME][i];
@@ -67,8 +72,15 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && pending8 >
 $('#drawBtn').addEventListener('click', async () => {
   if (G.turn !== ME || G.over || busy || !G.in[ME]) return;
   if (MATCH.online && !MATCH.host){
-    SFX.draw(); sendMove({ a:'draw' });
-    busy = true; render(); setTimeout(() => { busy = false; render(); }, 400);
+    const combien = Math.min(5, G.pending ? (G.pending.amount || 1) : 1);
+    sendMove({ a:'draw' });
+    /* autant de cartes qui volent que de cartes encaissées, comme hors ligne */
+    for (let k = 0; k < combien; k++)
+      setTimeout(() => fly($('#drawSlot'), handTarget(),
+        '<div class="cardback" style="width:100%;height:100%"></div>', true,
+        k === 0 ? () => (G.pending ? SFX.atk(G.pending.amount) : SFX.draw()) : null), S(160) * k);
+    busy = true; render();
+    setTimeout(() => { busy = false; render(); }, Math.max(400, S(CONFIG.flyMs) + S(160) * combien));
     return;
   }
   busy = true; selected = -1; hideSuitBar(); render();
