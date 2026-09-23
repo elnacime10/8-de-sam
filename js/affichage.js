@@ -26,7 +26,7 @@ function fly(from, to, html, flip){
     layer.appendChild(d);
     const dx = b.left + (b.width-a.width)/2 - a.left;
     const dy = b.top + (b.height-a.height)/2 - a.top;
-    const sc = b.width / a.width;
+    const sc = Math.min(1.15, b.width / a.width);   /* une carte qui vole garde sa taille */
     const ms = S(CONFIG.flyMs);
     requestAnimationFrame(() => {
       d.style.transition = `transform ${ms}ms cubic-bezier(.22,.75,.3,1)`;
@@ -59,37 +59,41 @@ function lineFor(p, kind){
   return SET.trash ? l.t : l.c;
 }
 /* Une bulle à la fois, jamais deux fois de suite le même, et pas à chaque coup. */
+/* ---- LE FIL : un seul endroit où tout s'écrit, coups et répliques ----
+   Plus de bulle posée sur un portrait, plus de bandeau séparé, plus de
+   minuterie d'effacement : le fil défile, c'est tout. */
+const FIL = [];
+function filAjoute(p, texte, genre){
+  const d = FIL[FIL.length - 1];
+  if (d && d.p === p && d.texte === texte && d.genre === genre) return;   /* pas deux fois la même ligne */
+  FIL.push({ p, texte, genre, n:(G ? G.actNo : 0) });
+  if (FIL.length > 12) FIL.shift();
+  renderFil();
+}
+function renderFil(){
+  const el = $('#fil'); if (!el) return;
+  const max = +(el.dataset.lignes || 3);
+  const vues = FIL.slice(-max);
+  el.innerHTML = vues.map((l, i) => {
+    const age = vues.length - 1 - i;                    /* 0 = la plus récente */
+    const moi = l.p === ME;
+    const qui = moi ? 'Toi' : nameOf(l.p);
+    const corps = l.genre === 'dit' ? `<i>«&nbsp;${l.texte}&nbsp;»</i>` : l.texte;
+    return `<div class="fl a${age}${moi ? ' moi' : ''}"><span class="q">${qui}</span>${corps}</div>`;
+  }).join('');
+}
+/* les répliques des personnages passent par le fil */
 function bubble(p, kind){
   if (p === ME || !G || skipAll) return;
   if (G.over && kind !== 'out' && kind !== 'lose') return;
   const fin = (kind === 'out' || kind === 'lose');
-  /* un délai en nombre de coups : en duel il n'y a qu'un adversaire,
-     interdire la répétition le réduisait au silence */
   if (!fin && G.moveNo - lastBubbleMove < CONFIG.bubbleGap) return;
   if (!fin && MATCH.n > 2 && p === lastBubbleWho) return;
   const txt = lineFor(p, kind);
-  const seat = document.querySelector(`.seat[data-p="${p}"]`);
-  const layer = $('#bubLayer');
-  if (!txt || !seat || !layer) return;
-  const r = seat.getBoundingClientRect();
-  if (!r.width) return;
-  layer.innerHTML = '';                                   // une seule bulle à la fois
-  const b = document.createElement('div');
-  b.className = 'bubble';
-  b.textContent = txt;
-  b.style.left = Math.round(r.left + r.width / 2) + 'px';
-  b.style.top  = Math.round(r.top + 10) + 'px';
-  layer.appendChild(b);
-  /* on la ramène dans l'écran si elle dépasse d'un côté ou de l'autre */
-  requestAnimationFrame(() => {
-    const w = b.offsetWidth || 0, vw = window.innerWidth || 360, marge = 10;
-    let x = r.left + r.width / 2;
-    x = Math.max(w / 2 + marge, Math.min(vw - w / 2 - marge, x));
-    b.style.left = Math.round(x) + 'px';
-    b.classList.add('show');
-  });
-  setTimeout(() => { b.classList.remove('show'); setTimeout(() => b.remove(), 260); }, S(CONFIG.bubbleMs));
+  if (!txt) return;
   lastBubbleMove = G.moveNo; lastBubbleWho = p;
+  filAjoute(p, txt, 'dit');
+  SFX.bub && SFX.bub();
 }
 function flash(txt, hot){
   const el = $('#flash');
@@ -190,6 +194,7 @@ function render(){
     ? `Tour ${MATCH.tour}/${MATCH.tours} · toi ${SG(ME).score > 0 ? '+' : ''}${SG(ME).score}`
     : 'Manche sèche';
   const wd = WORLDS[MATCH.world] || WORLDS.quartier;
+  document.documentElement.dataset.world = MATCH.world;      /* habillage du fil */
   $('#bgImg').style.backgroundImage = 'url(' + IMG[MATCH.world] + ')';
   $('#bgFar').style.backgroundImage = 'url(' + IMG[MATCH.world] + ')';
   document.documentElement.style.setProperty('--bgY', wd.bgY);
@@ -279,7 +284,7 @@ function render(){
   const btn = $('#drawBtn');
   btn.disabled = !myTurn;
   if (G.pending && myTurn){
-    btn.innerHTML = '⚠ PRENDRE <span class="big">' + G.pending.amount + '</span> CARTES';
+    btn.innerHTML = '⚠ PRENDRE <span class="big">' + G.pending.amount + '</span> CARTE' + (G.pending.amount > 1 ? 'S' : '');
     btn.classList.add('danger');
   } else {
     btn.textContent = myTurn && hasPlayable(ME) ? 'Piocher quand même' : 'Piocher';
@@ -308,28 +313,22 @@ function setTurnLine(){
 
 /* ---- Ce qu'a fait le joueur précédent, écrit en clair ---- */
 let lastActShown = 0;
+/* Le fil n'est pas un journal de toutes les cartes : l'historique est là pour ça.
+   Il ne garde que ce qui se raconte : attaques, encaissements, tours sautés,
+   changements de sens, dernières cartes et sorties. */
 function renderAct(){
-  const el = $('#actBar'), a = G && G.lastAct;
-  if (!a){ el.innerHTML = ''; return; }
-  const qui = p => p === ME ? 'Tu' : nameOf(p);
-  const carte = (r, s) => `<b class="${isRed(s) ? 'r' : ''}">${r}${SUIT_CHAR[s]}</b>`;
-  let t;
-  if (a.k === 'play'){
-    t = qui(a.p) + (a.p === ME ? ' poses ' : ' pose ') + carte(a.r, a.s);
-    if (a.suit) t += ' et demande <b class="' + (isRed(a.suit) ? 'r' : '') + '">' + SUIT_CHAR[a.suit] + ' ' + SUIT_NAME[a.suit] + '</b>';
-    if (a.amt && (a.r === 'A' || a.r === '9')) t += ' — attaque <b>+' + a.amt + '</b>';
-    if (a.skip !== undefined) t += ' — ' + (a.skip === ME ? 'tu sautes ton tour' : qui(a.skip) + ' saute son tour');
-    if (a.rev) t += ' — le sens s\'inverse';
-  } else if (a.k === 'take'){
-    t = qui(a.p) + (a.p === ME ? ' encaisses ' : ' encaisse ') + '<b>' + (a.amt || 1) + ' carte' + ((a.amt || 1) > 1 ? 's' : '') + '</b>';
-  } else {
-    t = qui(a.p) + (a.p === ME ? ' pioches' : ' pioche');
+  const a = G && G.lastAct;
+  if (!a || a.n === lastActShown) return;
+  lastActShown = a.n;
+  const gras = t => '<b>' + t + '</b>';
+  let t = null;
+  if (a.k === 'take') t = 'encaisse ' + gras((a.amt || 1) + ' carte' + ((a.amt || 1) > 1 ? 's' : ''));
+  else if (a.k === 'play'){
+    if (a.amt && (a.r === 'A' || a.r === '9')) t = 'attaque ' + gras('+' + a.amt);
+    else if (a.skip !== undefined) t = (a.skip === ME ? 'te fait sauter ton tour' : 'fait sauter ' + nameOf(a.skip));
+    else if (a.rev) t = 'inverse le sens';
   }
-  if (el.innerHTML !== t) el.innerHTML = t;
-  if (a.n !== lastActShown){
-    lastActShown = a.n;
-    el.classList.remove('new'); void el.offsetWidth; el.classList.add('new');
-  }
+  if (t) filAjoute(a.p, t, 'coup');
 }
 
 /* ---- La couleur demandée par un 8 recouvre la carte, et teinte la table ---- */
@@ -376,12 +375,28 @@ function ajusteTableSur(){
   const pose = w => { r.setProperty('--pile-w', w + 'px'); r.setProperty('--pile-h', Math.round(w * 1.4) + 'px'); };
   $('#histCol').style.display = '';
   $('#hand').style.transform = '';
+  t.classList.remove('serre');
   let pw = PW0; pose(pw);
-  const place = t.clientHeight;
+  /* on ne calcule plus : on regarde si quelque chose sort vraiment de la table */
+  const trop = () => {
+    const r = t.getBoundingClientRect(); let dehors = 0;
+    for (const e of Array.from(t.children)){
+      const cs2 = getComputedStyle(e);
+      if (cs2.display === 'none' || cs2.position === 'absolute') continue;
+      const b = e.getBoundingClientRect();
+      dehors = Math.max(dehors, r.top - b.top, b.bottom - r.bottom);
+    }
+    return dehors > 1;
+  };
   let garde = 0;
-  while (besoin() > place && pw > 48 && garde++ < 20){ pw -= 6; pose(pw); }
-  if (besoin() > place) $('#dirWrap').style.display = 'none';
-  if (besoin() > place) $('#histCol').style.display = 'none';
+  while (trop() && pw > 48 && garde++ < 20){ pw -= 6; pose(pw); }
+  const fil = $('#fil');
+  if (fil && fil.dataset.lignes !== '3'){ fil.dataset.lignes = 3; renderFil(); }
+  if (trop()) t.classList.add('serre');    /* plus de place : on aligne en haut, jamais de coupe */
+  if (trop() && fil){ fil.dataset.lignes = 2; renderFil(); }   /* le fil rétrécit avant tout le reste */
+  if (trop() && fil){ fil.dataset.lignes = 1; renderFil(); }
+  if (trop()) $('#dirWrap').style.display = 'none';
+  if (trop()) $('#histCol').style.display = 'none';
   /* tout petit écran : la main se réduit un peu plutôt que de chevaucher la table */
   const hand = $('#hand'), manque = besoin() - t.clientHeight;
   if (manque > 0){

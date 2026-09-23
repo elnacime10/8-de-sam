@@ -266,7 +266,7 @@ function refreshSet(){
     : 'Exemple : Mehmet — « Mange ça, tiens ! »';
   document.querySelectorAll('#speedRow .seg').forEach(b => b.classList.toggle('on', +b.dataset.k === SET.speed));
   document.querySelectorAll('#sortRow .seg').forEach(b => b.classList.toggle('on', b.dataset.k === SET.sort));
-  speedIdx = SET.speed;
+  bornerVitesse(); speedIdx = SET.speed;
   $('#sortBtn').textContent = 'Tri : ' + (sortMode === 'suit' ? 'couleur' : 'valeur');
 }
 $('#tSound').addEventListener('click', () => { SET.sound = !SET.sound; saveSet(); refreshSet(); if (SET.sound) SFX.mine(); });

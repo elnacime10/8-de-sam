@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="images/icone-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@500;600;700;800&family=Permanent+Marker&family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <!-- Mode en ligne. Bloqué sur claude.ai : le jeu fonctionne quand même, seul le multijoueur est désactivé. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
 <link rel="stylesheet" href="css/style.css">
@@ -42,7 +42,7 @@
     <div id="flash"></div>
     <div id="chrono" class="hidden">30</div>
     <div id="histCol"></div>
-    <div id="actBar"></div>
+    <div id="fil" data-lignes="3"></div>
     <div id="tableTop">
     <div id="piles">
       <div class="pileWrap">
@@ -109,7 +109,7 @@
 <div id="introScreen" class="hidden"><div id="introRow"></div></div>
 <div id="netBar" class="hidden"><span id="netBarTxt"></span><button id="netBarBtn">Accueil</button></div>
 <div id="flyLayer"></div>
-<div id="bubLayer"></div>
+
 
 <div class="overlay" id="loadScreen">
   <div class="panel" style="text-align:center">
@@ -265,9 +265,8 @@
     <p class="hint" id="trashEx"></p>
     <p class="sect">Vitesse de jeu</p>
     <div class="row" id="speedRow">
-      <button class="seg" data-k="0">Lente</button>
-      <button class="seg" data-k="1">Normale</button>
-      <button class="seg" data-k="2">Rapide</button>
+      <button class="seg" data-k="0">Normale</button>
+      <button class="seg" data-k="1">Rapide</button>
     </div>
     <p class="sect">Tri de la main</p>
     <div class="row" id="sortRow">

@@ -124,7 +124,6 @@ button:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
 #suitTag.none{ background:rgba(255,255,255,.15); color:var(--muted); }
 #turnLine{ font-size:14.5px; font-weight:800; min-height:19px; text-align:center; color:var(--muted); padding:0 8px; }
 #turnLine.you{ color:var(--gold); }
-#bubLayer{ position:fixed; inset:0; z-index:18; pointer-events:none; }
 .bubble{
   position:fixed; transform:translate(-50%,0) scale(.8); transform-origin:top center;
   max-width:min(230px, calc(100vw - 24px)); padding:8px 12px; border-radius:14px;
@@ -449,14 +448,6 @@ table.rt td.s{ width:38px; }
 #table{ background:radial-gradient(60% 45% at 50% 48%, var(--tint,transparent), transparent 75%); transition:background .4s; }
 
 /* ce qu'a fait le joueur précédent, en clair */
-#actBar{ max-width:100%; padding:7px 14px; border-radius:12px; text-align:center;
-  background:rgba(10,8,14,.72); border:1px solid rgba(255,255,255,.16);
-  font-size:14px; font-weight:800; line-height:1.35; min-height:20px; }
-#actBar:empty{ display:none; }
-#actBar b{ color:var(--gold); }
-#actBar .r{ color:#FF8A7C; }
-#actBar.new{ animation:actNew .5s; }
-@keyframes actNew{ 0%{ transform:scale(.92); background:rgba(243,172,78,.45); } 100%{ transform:none; } }
 
 /* c'est à toi : impossible à rater */
 #turnBanner{ text-align:center; margin:0 auto 6px; width:max-content; max-width:100%;
@@ -533,6 +524,7 @@ table.rt td.s{ width:38px; }
 @keyframes lastBlink{ 50%{ opacity:.5; } }
 
 #table{ justify-content:safe center; }
+#table.serre{ justify-content:flex-start; }
 #oppRow{ flex:0 0 auto; }      /* la rangée des adversaires ne se tasse jamais */
 
 
@@ -558,3 +550,81 @@ table.rt td.s{ width:38px; }
 #drawBtn.prime{ background:linear-gradient(180deg,var(--gold),var(--gold-dk)); color:#2B1B05; border:none;
   box-shadow:0 4px 0 rgba(0,0,0,.35); }
 .card .sign{ display:none !important; }
+
+
+
+/* ===================== LE FIL =====================
+   Un seul endroit où l'on suit ce qui se raconte. Hauteur fixe,
+   une ligne par message, jamais de retour à la ligne. */
+#fil{ --fl:17px; flex:0 0 auto; width:100%; box-sizing:border-box; padding:8px 12px; border-radius:10px;
+  display:flex; flex-direction:column; justify-content:flex-end; gap:3px; overflow:hidden; position:relative;
+  height:calc(var(--fl) * 3 + 22px); font-size:11.5px; line-height:var(--fl); }
+#fil[data-lignes="2"]{ height:calc(var(--fl) * 2 + 22px); }
+#fil[data-lignes="1"]{ height:calc(var(--fl) + 22px); }
+#fil .fl{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+#fil .fl.moi{ text-align:right; }
+#fil .q{ margin-right:6px; }
+#fil .a0{ font-size:12px; }
+#fil .a1{ opacity:.55; font-size:10.5px; }
+#fil .a2{ opacity:.3;  font-size:10px; }
+#fil .a0{ animation:filNew .3s ease-out; }
+@keyframes filNew{ from{ transform:translateY(6px); opacity:0; } to{ transform:none; opacity:1; } }
+
+/* ---------- QUARTIER : un mur de cité, les noms à la bombe ---------- */
+:root[data-world="quartier"] #fil{
+  color:#EDE3D2;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 20px, rgba(0,0,0,.55) 20px 22px, rgba(255,255,255,.10) 22px 23px),
+    repeating-linear-gradient(90deg, transparent 0 62px, rgba(0,0,0,.45) 62px 64px, rgba(255,255,255,.08) 64px 65px),
+    radial-gradient(120% 80% at 20% 0%, rgba(255,255,255,.06), transparent 60%),
+    linear-gradient(180deg, #554D44, #322C27);
+  border:1px solid rgba(0,0,0,.5);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.07), inset 0 -10px 18px rgba(0,0,0,.45), 0 4px 10px rgba(0,0,0,.4);
+  border-radius:4px; }
+:root[data-world="quartier"] #fil .q{
+  font-family:'Permanent Marker',cursive; color:#F2C14A; font-size:12.5px; letter-spacing:.3px;
+  text-shadow:0 0 6px rgba(242,193,74,.45); display:inline-block; transform:rotate(-1.5deg); }
+:root[data-world="quartier"] #fil .fl i{ color:#FFE6A8; }
+:root[data-world="quartier"] #fil .r{ color:#FF9A8C; }
+
+/* ---------- STUDIO : une tranche de console, LED et faders ---------- */
+:root[data-world="studio"] #fil{
+  color:#DDE6E1; font-family:'Share Tech Mono',monospace; letter-spacing:.2px;
+  background:
+    repeating-linear-gradient(180deg, rgba(255,255,255,.05) 0 1px, transparent 1px 17px),
+    linear-gradient(180deg, #23262B, #15171B);
+  border:1px solid #0A0C0E; border-radius:6px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 6px rgba(0,0,0,.7), 0 3px 10px rgba(0,0,0,.5);
+  padding-left:26px; }
+:root[data-world="studio"] #fil:before{            /* la réglette de niveau, à gauche */
+  content:''; position:absolute; left:9px; top:10px; bottom:10px; width:7px; border-radius:2px;
+  background:repeating-linear-gradient(180deg, #2CCB78 0 3px, rgba(0,0,0,.6) 3px 5px);
+  box-shadow:0 0 7px rgba(44,203,120,.5), inset 0 0 0 1px rgba(0,0,0,.6); opacity:.85; }
+:root[data-world="studio"] #fil .q{ color:#57D9A3; text-transform:uppercase; font-size:10.5px; }
+:root[data-world="studio"] #fil .a0 .q{ color:#7CFFC4; text-shadow:0 0 8px rgba(44,203,120,.8); }
+:root[data-world="studio"] #fil .fl i{ color:#CFE9DC; }
+:root[data-world="studio"] #fil .r{ color:#FF8E7E; }
+
+/* ---------- SUSHI : la carte du restaurant ---------- */
+:root[data-world="sushi"] #fil{
+  color:#2B211A; font-family:'Cormorant Garamond',Georgia,serif; font-size:14px;
+  background:
+    repeating-linear-gradient(90deg, rgba(150,120,80,.05) 0 2px, transparent 2px 6px),
+    linear-gradient(180deg, #F6EEDC, #EADFC6);
+  border:1px solid #C9B490; border-left:5px double #A82D26; border-radius:3px;
+  box-shadow:0 4px 12px rgba(0,0,0,.45), inset 0 0 22px rgba(168,45,38,.06); }
+:root[data-world="sushi"] #fil .fl{ border-bottom:1px dotted rgba(120,90,60,.35); padding-bottom:1px; }
+:root[data-world="sushi"] #fil .q{
+  font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; font-weight:600;
+  color:#A82D26; font-size:14px; letter-spacing:.4px; }
+:root[data-world="sushi"] #fil .a0{ font-size:14.5px; }
+:root[data-world="sushi"] #fil .a1{ font-size:13px; }
+:root[data-world="sushi"] #fil .a2{ font-size:12.5px; }
+:root[data-world="sushi"] #fil .r{ color:#A82D26; }
+:root[data-world="sushi"] #fil b{ color:#6B4A12; }
+
+/* à plusieurs, l'étiquette se range sous le compte plutôt que de dépasser */
+#oppRow.two .seat .tagS{ position:static; transform:none; display:block; width:100%; box-sizing:border-box;
+  margin-top:4px; font-size:8px; padding:2px 2px; letter-spacing:0; }
+#oppRow.two .seat .opp{ padding-top:8px; }
+#table.serre{ justify-content:flex-start; }

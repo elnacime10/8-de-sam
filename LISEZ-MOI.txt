@@ -1,4 +1,4 @@
-LE 8 DE SAM — version 2.0 (fiabilité)
+LE 8 DE SAM — version 2.1 (le fil et le rythme)
 
 CE QUE CONTIENT CETTE ARCHIVE
   Tout le jeu. Elle remplace entièrement ce qui est sur le dépôt.
@@ -16,4 +16,4 @@ IMPORTANT
   est désormais refusé avec un message clair, au lieu d'entrer dans une
   partie où il ne comprend que la moitié de ce qui se passe.
 
-  Version affichée en bas de l'accueil : 2.0
+  Version affichée en bas de l accueil : 2.1

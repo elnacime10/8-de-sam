@@ -24,23 +24,19 @@ function sizeUp(){
 }
 
 const CONFIG = {
-  aiThinkMs    : 850,
-  aiChainMs    : 600,
-  flyMs        : 400,
-  settleMs     : 240,
-  drawHoldMs   : 300,
-  fastMs       : 190,      // résolution accélérée quand tu es sorti
-  stagnation   : { startTurn:3, relaxAt:6, pushAt:12, reshuffleForce:2 },
-  hardErrorRate: 0.15,
-  midErrorRate : 0.32,
-  histMax      : 7,
-  bubbleGap    : 4,      // coups minimum entre deux répliques
-  bubbleMs     : 2600    // durée d'affichage d'une réplique
+  /* toutes les durées du jeu sont ici, en millisecondes, vitesse « normale » */
+  aiThinkMs:1400, aiChainMs:900, flyMs:650, settleMs:320, drawHoldMs:420, fastMs:260,
+  introMs:1400, dealMs:70,                 /* ouverture : volontairement rapide */
+  histMax:7, filMax:3, bubbleGap:3, bubbleMs:2600,
+  stagnation:{startTurn:3, relaxAt:6, pushAt:12, reshuffleForce:2},
+  hardErrorRate:0.15, midErrorRate:0.32
 };
-const SPEEDS = [{name:'lente',k:1.5},{name:'normale',k:1},{name:'rapide',k:0.55}];
-const SET = { sound:true, vibe:true, speed:1, sort:'suit', trash:true };
+const SPEEDS = [{name:'normale',k:1},{name:'rapide',k:0.62}];   /* deux vitesses suffisent */
+const SET = { sound:true, vibe:true, speed:0, sort:'suit', trash:true };
 
 function loadSet(){ try{ Object.assign(SET, JSON.parse(localStorage.getItem('sam8_set')) || {}); }catch(e){} }
+/* deux vitesses désormais : un ancien réglage à 2 revient dans la plage */
+function bornerVitesse(){ if (!(SET.speed >= 0 && SET.speed <= 1)) SET.speed = (SET.speed >= 2 ? 1 : 0); }
 function saveSet(){ try{ localStorage.setItem('sam8_set', JSON.stringify(SET)); }catch(e){} }
-let speedIdx = 1;
-const S = ms => Math.round(ms * SPEEDS[speedIdx].k);
+let speedIdx = 0;
+const S = ms => Math.round(ms * (SPEEDS[speedIdx] || SPEEDS[0]).k);
